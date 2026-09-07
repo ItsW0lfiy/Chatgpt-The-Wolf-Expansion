@@ -85,15 +85,15 @@ test("global settings remain available while account-owned data is gated", async
 });
 
 test("account scope identifiers are deterministic opaque hashes", async () => {
-  const identity = "email:fixture-user@example.invalid";
+  const identity = "chatgpt-user-id:user-EXAMPLEACCOUNT123";
   const first = await createOpaqueAccountScopeId(identity);
   const second = await createOpaqueAccountScopeId(identity);
   assert.equal(first, second);
   assert.match(first, /^sha256-[0-9a-f]{64}$/u);
-  assert.doesNotMatch(first, /fixture|example|@/u);
+  assert.doesNotMatch(first, /user|example/iu);
 });
 
-test("schema 7 conservatively preserves legacy unscoped organization without assigning it", async () => {
+test("schema 8 conservatively preserves legacy unscoped organization without assigning it", async () => {
   const base = new MemoryStorage();
   await base.setMany({
     [STORAGE_KEYS.schemaVersion]: 6,
@@ -120,6 +120,8 @@ test("schema 7 conservatively preserves legacy unscoped organization without ass
   );
   assert.ok(legacy);
   assert.deepEqual(legacy.folderChatNameDisplayOverrides, { "legacy-folder": "full" });
+  assert.equal(legacy.claimedIdentityVersion, null);
+  assert.equal(legacy.stableScopeMigration, null);
   assert.equal(await base.get(STORAGE_KEYS.schemaVersion, 0), STORAGE_SCHEMA_VERSION);
   const scoped = new AccountScopedStorage(base);
   scoped.setScope("new-account");

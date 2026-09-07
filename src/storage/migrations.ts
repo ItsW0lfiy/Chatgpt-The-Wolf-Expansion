@@ -104,6 +104,8 @@ export async function migrateStorage(storage: KeyValueStorage): Promise<void> {
           sourceSchemaVersion: typeof rawSchemaVersion === "number" ? rawSchemaVersion : null,
           claimedToScopeId: null,
           claimedAt: null,
+          claimedIdentityVersion: null,
+          stableScopeMigration: null,
           favorites,
           uiState,
           folders,
@@ -166,6 +168,28 @@ export function normalizeLegacyAccountData(value: unknown): LegacyAccountData | 
       value.claimedToScopeId.trim()
     ? value.claimedToScopeId.trim()
     : null;
+  const stableScopeMigrationValue = isRecord(value.stableScopeMigration)
+    ? value.stableScopeMigration
+    : null;
+  const sourceScopeId = typeof stableScopeMigrationValue?.sourceScopeId === "string"
+    ? stableScopeMigrationValue.sourceScopeId.trim()
+    : "";
+  const destinationScopeId = typeof stableScopeMigrationValue?.destinationScopeId === "string"
+    ? stableScopeMigrationValue.destinationScopeId.trim()
+    : "";
+  const stableScopeMigration = sourceScopeId && destinationScopeId &&
+      typeof stableScopeMigrationValue?.migratedAt === "number"
+    ? {
+        sourceScopeId,
+        destinationScopeId,
+        migratedAt: stableScopeMigrationValue.migratedAt,
+      }
+    : null;
+  const claimedIdentityVersion = value.claimedIdentityVersion === "stable-user-id"
+    ? "stable-user-id"
+    : value.claimedIdentityVersion === "legacy-profile" || claimedToScopeId
+      ? "legacy-profile"
+      : null;
   return {
     preservedAt: typeof value.preservedAt === "number" ? value.preservedAt : 0,
     sourceSchemaVersion: typeof value.sourceSchemaVersion === "number"
@@ -175,6 +199,8 @@ export function normalizeLegacyAccountData(value: unknown): LegacyAccountData | 
     claimedAt: claimedToScopeId && typeof value.claimedAt === "number"
       ? value.claimedAt
       : null,
+    claimedIdentityVersion,
+    stableScopeMigration,
     favorites: normalizeFavorites(value.favorites),
     uiState: normalizeUiState(value.uiState),
     folders,

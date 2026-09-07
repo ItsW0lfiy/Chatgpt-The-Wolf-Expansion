@@ -368,11 +368,12 @@ export class InChatSettingsFeature implements Feature {
     restoreButton.hidden = false;
     restoreButton.textContent = "Restore previous Quick Access data";
     cancelButton.hidden = true;
-    if (status.state === "available") {
+    if (status.state === "available" || status.state === "stable-rebind-available") {
       this.legacyRestoreScopeId = status.scopeId;
       fieldset.hidden = false;
-      description.textContent =
-        `Found ${status.favoriteCount} previous Quick Access chat${status.favoriteCount === 1 ? "" : "s"} and ${status.folderCount} folder${status.folderCount === 1 ? "" : "s"}. Restore assigns this preserved data to the currently signed-in ChatGPT account.`;
+      description.textContent = status.state === "stable-rebind-available"
+        ? `Found ${status.favoriteCount} Quick Access chat${status.favoriteCount === 1 ? "" : "s"} and ${status.folderCount} folder${status.folderCount === 1 ? "" : "s"} under an older Wolf account identity. Restore copies them to this account's stable identity while retaining the old safety copy.`
+        : `Found ${status.favoriteCount} previous Quick Access chat${status.favoriteCount === 1 ? "" : "s"} and ${status.folderCount} folder${status.folderCount === 1 ? "" : "s"}. Restore assigns this preserved data to the currently signed-in ChatGPT account.`;
       return;
     }
     if (status.state === "destination-not-empty") {
@@ -380,6 +381,13 @@ export class InChatSettingsFeature implements Feature {
       restoreButton.hidden = true;
       description.textContent =
         "Previous data was not restored because this account already has Wolf Expansion organization data. Neither data set was changed.";
+      return;
+    }
+    if (status.state === "source-unavailable") {
+      fieldset.hidden = false;
+      restoreButton.hidden = true;
+      description.textContent =
+        "The previous account scope could not be recovered safely. No data was changed.";
       return;
     }
     fieldset.hidden = true;
@@ -697,5 +705,7 @@ function getLegacyRestoreMessage(result: LegacyAccountRecoveryResult): string {
       return "Restore requires a confidently identified signed-in ChatGPT account.";
     case "no-legacy-data":
       return "No previous Quick Access data is available to restore.";
+    case "source-unavailable":
+      return "The previous account scope could not be recovered safely. Nothing was changed.";
   }
 }

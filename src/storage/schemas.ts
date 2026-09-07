@@ -1,4 +1,4 @@
-export const STORAGE_SCHEMA_VERSION = 7;
+export const STORAGE_SCHEMA_VERSION = 8;
 
 export type ItemNameDisplayMode = "compact" | "full";
 
@@ -58,6 +58,12 @@ export interface LegacyAccountData {
   sourceSchemaVersion: number | null;
   claimedToScopeId: string | null;
   claimedAt: number | null;
+  claimedIdentityVersion: "legacy-profile" | "stable-user-id" | null;
+  stableScopeMigration: {
+    sourceScopeId: string;
+    destinationScopeId: string;
+    migratedAt: number;
+  } | null;
   favorites: FavoriteConversation[];
   uiState: FavoritesUiState;
   folders: FolderRecord[];

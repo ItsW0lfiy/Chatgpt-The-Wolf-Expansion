@@ -25,3 +25,30 @@ test("logout starts a new fail-closed transition until its state is applied", ()
   assert.equal(transition.complete(logout), true);
   assert.equal(transition.isPending, false);
 });
+
+test("new account evidence wins while an older scope hash is still resolving", async () => {
+  const transition = new AccountScopeTransition();
+  let releaseOldHash: (() => void) | undefined;
+  const oldHashReady = new Promise<void>((resolve) => {
+    releaseOldHash = resolve;
+  });
+  const appliedScopes: string[] = [];
+
+  const oldGeneration = transition.begin();
+  const oldWork = oldHashReady.then(() => {
+    if (transition.isCurrent(oldGeneration)) {
+      appliedScopes.push("old-scope");
+      transition.complete(oldGeneration);
+    }
+  });
+  const newGeneration = transition.begin();
+  if (transition.isCurrent(newGeneration)) {
+    appliedScopes.push("new-scope");
+    transition.complete(newGeneration);
+  }
+  releaseOldHash?.();
+  await oldWork;
+
+  assert.deepEqual(appliedScopes, ["new-scope"]);
+  assert.equal(transition.isCurrent(oldGeneration), false);
+});

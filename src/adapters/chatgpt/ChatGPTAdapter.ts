@@ -628,17 +628,11 @@ export class DefaultChatGPTAdapter implements ChatGPTAdapter {
     const profile = profileButtons.find((element) => element.querySelector("img[src]")) ??
       profileButtons[0] ?? null;
     return resolveChatGPTAccountEvidence({
-      accountEmailText: document.querySelector<HTMLElement>(CHATGPT_SELECTORS.accountEmail)
-        ?.innerText ?? "",
-      accountUsernameText: document.querySelector<HTMLElement>(CHATGPT_SELECTORS.accountUsername)
-        ?.innerText ?? "",
       baseUrl: window.location.href,
       loggedOutControlVisible: Array.from(
         document.querySelectorAll<HTMLElement>(CHATGPT_SELECTORS.loggedOutAuthControl),
       ).some((element) => element.getAttribute("aria-hidden") !== "true" && !element.hidden),
       profileImageSource: profile?.querySelector<HTMLImageElement>("img[src]")?.src.trim() ?? "",
-      profileLabel: profile?.getAttribute("aria-label") || profile?.innerText ||
-        profile?.textContent || "",
       profilePresent: profile !== null,
     });
   }
@@ -660,8 +654,6 @@ export class DefaultChatGPTAdapter implements ChatGPTAdapter {
     const accountSelector = [
       CHATGPT_SELECTORS.accountProfileButton,
       CHATGPT_SELECTORS.loggedOutAuthControl,
-      CHATGPT_SELECTORS.accountEmail,
-      CHATGPT_SELECTORS.accountUsername,
     ].join(",");
     const containsAccountEvidence = (node: Node): boolean =>
       node instanceof Element &&

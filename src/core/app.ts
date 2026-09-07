@@ -15,6 +15,7 @@ import {
 import { StorageService } from "../storage/StorageService";
 import {
   createOpaqueAccountScopeId,
+  getChatGPTAccountEvidenceSignature,
   type ChatGPTAccountEvidence,
 } from "../accounts/accountIdentity";
 import { AccountScopeTransition } from "../accounts/accountScopeTransition";
@@ -153,7 +154,7 @@ export class WolfExpansionApp {
   }
 
   private queueAccountEvidence(evidence: ChatGPTAccountEvidence): void {
-    const signature = getAccountEvidenceSignature(evidence);
+    const signature = getChatGPTAccountEvidenceSignature(evidence);
     if (signature === this.appliedEvidenceSignature) {
       return;
     }
@@ -176,7 +177,7 @@ export class WolfExpansionApp {
     evidence: ChatGPTAccountEvidence,
     generation: number,
   ): Promise<void> {
-    const signature = getAccountEvidenceSignature(evidence);
+    const signature = getChatGPTAccountEvidenceSignature(evidence);
     if (!this.accountTransition.isCurrent(generation)) {
       return;
     }
@@ -223,12 +224,4 @@ export class WolfExpansionApp {
       this.accountStorage.setScope(null);
     }
   }
-}
-
-function getAccountEvidenceSignature(evidence: ChatGPTAccountEvidence): string {
-  return evidence.state === "identified"
-    ? `${evidence.state}:${evidence.source}:${evidence.identity}`
-    : evidence.state === "unresolved"
-      ? `${evidence.state}:${evidence.profileFingerprint ?? ""}`
-      : evidence.state;
 }

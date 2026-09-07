@@ -1,26 +1,24 @@
 export type ChatGPTAccountEvidence =
   | { state: "logged-out" }
   | {
-      profileFingerprint: string | null;
-      reason: "missing-profile" | "weak-profile";
+      reason: "missing-profile" | "invalid-profile-user-id";
       state: "unresolved";
     }
   | {
       identity: string;
-      profileFingerprint: string | null;
-      source: "account-email" | "account-username" | "profile-image";
+      source: "profile-user-id";
       state: "identified";
     };
 
 export interface ChatGPTAccountSignals {
-  accountEmailText: string;
-  accountUsernameText: string;
   baseUrl: string;
   loggedOutControlVisible: boolean;
   profileImageSource: string;
-  profileLabel: string;
   profilePresent: boolean;
 }
+
+const ESTUARY_PROFILE_CARRIER_PATH = "/backend-api/estuary/public_content/enc/";
+const CHATGPT_USER_ID_PATTERN = /^user-[A-Za-z0-9][A-Za-z0-9_-]{5,127}$/u;
 
 export async function createOpaqueAccountScopeId(identity: string): Promise<string> {
   const data = new TextEncoder().encode(`wolf-expansion-account-scope\0${identity}`);
@@ -29,80 +27,97 @@ export async function createOpaqueAccountScopeId(identity: string): Promise<stri
     byte.toString(16).padStart(2, "0")).join("")}`;
 }
 
-export function isLikelyUniqueProfileImage(value: string, baseUrl: string): boolean {
-  return getStableProfileImageIdentity(value, baseUrl) !== null;
-}
-
-export function getStableProfileImageIdentity(value: string, baseUrl: string): string | null {
+export function getChatGPTUserIdFromProfileImage(
+  value: string,
+  baseUrl: string,
+): string | null {
   try {
     const url = new URL(value, baseUrl);
-    if (!/^https?:$/u.test(url.protocol) || url.hostname === "example.invalid") {
-      return null;
-    }
     if (
-      url.hostname === "cdn.auth0.com" &&
-      /^\/avatars\/[a-z0-9_-]{1,8}\.(?:png|jpe?g|webp)$/iu.test(url.pathname)
+      url.origin !== "https://chatgpt.com" ||
+      url.username !== "" ||
+      url.password !== "" ||
+      !url.pathname.startsWith(ESTUARY_PROFILE_CARRIER_PATH)
     ) {
       return null;
     }
-    const identityMaterial = `${url.origin}${url.pathname}`;
-    return identityMaterial.length >= 32 && /[a-z]/iu.test(identityMaterial) &&
-      /[0-9]/u.test(identityMaterial)
-      ? identityMaterial
-      : null;
+
+    const encodedSegment = url.pathname.slice(ESTUARY_PROFILE_CARRIER_PATH.length);
+    if (!encodedSegment || encodedSegment.includes("/")) {
+      return null;
+    }
+    const decodedPayload = decodeBase64Url(decodeURIComponent(encodedSegment));
+    if (decodedPayload === null) {
+      return null;
+    }
+    const payload: unknown = JSON.parse(decodedPayload);
+    if (!isRecord(payload) || typeof payload.id !== "string") {
+      return null;
+    }
+    const separatorIndex = payload.id.indexOf(":");
+    const userId = separatorIndex >= 0 ? payload.id.slice(0, separatorIndex) : payload.id;
+    return CHATGPT_USER_ID_PATTERN.test(userId) ? userId : null;
   } catch {
     return null;
   }
 }
 
-export function normalizeAccountIdentityValue(value: string): string {
-  return value.replace(/\s+/gu, " ").trim().toLocaleLowerCase("en-US");
-}
-
 export function resolveChatGPTAccountEvidence(
   signals: ChatGPTAccountSignals,
 ): ChatGPTAccountEvidence {
+  if (signals.loggedOutControlVisible) {
+    return { state: "logged-out" };
+  }
   if (!signals.profilePresent) {
-    return signals.loggedOutControlVisible
-      ? { state: "logged-out" }
-      : { state: "unresolved", reason: "missing-profile", profileFingerprint: null };
+    return { state: "unresolved", reason: "missing-profile" };
   }
 
-  const stableImageIdentity = getStableProfileImageIdentity(
+  const userId = getChatGPTUserIdFromProfileImage(
     signals.profileImageSource,
     signals.baseUrl,
   );
-  const profileFingerprint = `${normalizeAccountIdentityValue(signals.profileLabel)}\0${
-    stableImageIdentity ?? signals.profileImageSource.trim()
-  }`;
-  if (stableImageIdentity) {
-    return {
-      identity: `profile-image:${stableImageIdentity}`,
-      profileFingerprint,
-      source: "profile-image",
-      state: "identified",
-    };
-  }
+  return userId
+    ? {
+        identity: `chatgpt-user-id:${userId}`,
+        source: "profile-user-id",
+        state: "identified",
+      }
+    : { state: "unresolved", reason: "invalid-profile-user-id" };
+}
 
-  const email = signals.accountEmailText.match(
-    /[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/iu,
-  )?.[0];
-  if (email) {
-    return {
-      identity: `email:${normalizeAccountIdentityValue(email)}`,
-      profileFingerprint,
-      source: "account-email",
-      state: "identified",
-    };
+export function getChatGPTAccountEvidenceSignature(
+  evidence: ChatGPTAccountEvidence,
+): string {
+  switch (evidence.state) {
+    case "identified":
+      return `identified:${evidence.identity}`;
+    case "unresolved":
+      return `unresolved:${evidence.reason}`;
+    case "logged-out":
+      return "logged-out";
   }
-  const username = signals.accountUsernameText.match(/@[\p{L}\p{N}_.-]{2,}/u)?.[0];
-  if (username) {
-    return {
-      identity: `username:${normalizeAccountIdentityValue(username)}`,
-      profileFingerprint,
-      source: "account-username",
-      state: "identified",
-    };
+}
+
+function decodeBase64Url(value: string): string | null {
+  if (!/^[A-Za-z0-9+/_-]+={0,2}$/u.test(value)) {
+    return null;
   }
-  return { state: "unresolved", reason: "weak-profile", profileFingerprint };
+  const unpadded = value.replace(/=+$/u, "");
+  const remainder = unpadded.length % 4;
+  if (remainder === 1) {
+    return null;
+  }
+  const base64 = unpadded.replace(/-/gu, "+").replace(/_/gu, "/") +
+    "=".repeat((4 - remainder) % 4);
+  try {
+    const binary = atob(base64);
+    const bytes = Uint8Array.from(binary, (character) => character.charCodeAt(0));
+    return new TextDecoder("utf-8", { fatal: true }).decode(bytes);
+  } catch {
+    return null;
+  }
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
 }

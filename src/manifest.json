@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "ChatGPT: The Wolf Expansion",
-  "version": "0.2.2.1",
+  "version": "0.2.2.2",
   "description": "Local-first Quick Access and folder organization for ChatGPT.",
   "icons": {
     "16": "icons/wolf-expansion-mark-16.png",

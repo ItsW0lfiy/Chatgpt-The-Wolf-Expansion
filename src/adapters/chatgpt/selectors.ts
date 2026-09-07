@@ -16,7 +16,5 @@ export const CHATGPT_SELECTORS = {
     'button, [role="button"], h1, h2, h3, h4, h5, h6, [aria-label], [data-testid]',
   accountProfileButton: '[data-testid="accounts-profile-button"]',
   loggedOutAuthControl: '[data-mobile-auth-entry-action="login"], [data-testid="login-button"]',
-  accountEmail: '[data-testid="account-info-email"]',
-  accountUsername: '[data-testid="account-info-username"]',
   nativeConversationRenameEditor: 'input[name="title-editor"][aria-label="Chat title"]',
 } as const;
