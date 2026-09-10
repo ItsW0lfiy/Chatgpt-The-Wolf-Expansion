@@ -9,6 +9,7 @@ const tests = [
   "tests/accountIdentity.test.ts",
   "tests/accountScopeTransition.test.ts",
   "tests/accountScopedStorage.test.ts",
+  "tests/backup.test.ts",
   "tests/conversationIdentity.test.ts",
   "tests/conversationUrl.test.ts",
   "tests/dragIndicatorState.test.ts",

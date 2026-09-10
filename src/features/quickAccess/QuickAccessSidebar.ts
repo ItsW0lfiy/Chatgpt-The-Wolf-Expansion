@@ -210,13 +210,6 @@ export class QuickAccessSidebar {
       section.append(this.createNameEditor(nameEditorState, "Folder name"));
     }
 
-    const rootDrop = createWolfElement("div", "folder-root-drop-target");
-    rootDrop.className = "wolf-root-drop-target";
-    rootDrop.dataset.wolfDropKind = "root";
-    rootDrop.setAttribute("role", "status");
-    rootDrop.append(createIcon("tray"), document.createTextNode("Move folder to Quick Access root"));
-    section.append(rootDrop);
-
     const tree = createWolfElement("div", "quick-access-tree");
     tree.id = "wolf-expansion-quick-access-tree";
     tree.className = "wolf-quick-access-tree";
@@ -908,11 +901,6 @@ export class QuickAccessSidebar {
     const kind = target.dataset.wolfDropKind;
     const parentId = target.dataset.parentId || null;
     const targetIndex = Number(target.dataset.targetIndex ?? "0");
-    if (kind === "root" && payload.kind === "folder") {
-      await this.callbacks.onMoveFolder(payload.folderId, null);
-      this.logger.debug("Moved folder to root.", { folderId: payload.folderId });
-      return;
-    }
     if (kind === "folder") {
       const folderId = target.dataset.folderId;
       if (!folderId) {
@@ -987,9 +975,6 @@ export class QuickAccessSidebar {
 
   private getDropValidity(target: HTMLElement, payload: DragPayload): boolean {
     const kind = target.dataset.wolfDropKind;
-    if (kind === "root") {
-      return payload.kind === "folder";
-    }
     if (kind === "folder") {
       const folderId = target.dataset.folderId;
       if (!folderId) {
@@ -1903,6 +1888,12 @@ export class QuickAccessSidebar {
   }
 
   private setDropFeedback(target: HTMLElement, valid: boolean): void {
+    if (
+      this.dragIndicator.current === target &&
+      target.classList.contains(valid ? "wolf-is-valid-drop" : "wolf-is-invalid-drop")
+    ) {
+      return;
+    }
     const previous = this.dragIndicator.activate(target);
     if (previous) {
       this.removeDropFeedbackClasses(previous);
@@ -1977,6 +1968,7 @@ function collectProjectionConversations(
 function toIdentity(chat: QuickAccessChatView): NormalizedConversationIdentity {
   return {
     conversationId: chat.conversationId,
+    route: chat.route,
     title: chat.title,
     url: chat.url,
   };

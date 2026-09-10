@@ -226,6 +226,28 @@ footer {
   padding: 1rem 0.25rem;
 }
 
+.backup-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  margin-top: 0.8rem;
+}
+
+.backup-actions button {
+  background: transparent;
+  border: 1px solid color-mix(in srgb, currentColor 24%, transparent);
+  border-radius: 0.5rem;
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+  padding: 0.5rem 0.7rem;
+}
+
+.backup-actions button:hover,
+.backup-actions button:focus-visible {
+  background: color-mix(in srgb, currentColor 8%, transparent);
+}
+
 @media (max-width: 32rem) {
   .setting-row {
     align-items: flex-start;

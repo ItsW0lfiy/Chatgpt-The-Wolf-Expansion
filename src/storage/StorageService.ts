@@ -11,7 +11,12 @@ export interface KeyValueStorage {
   subscribe(key: string, listener: () => void): Unsubscribe;
 }
 
-export class StorageService implements KeyValueStorage {
+export interface StorageSnapshotService extends KeyValueStorage {
+  getAll(): Promise<Record<string, unknown>>;
+  removeMany(keys: readonly string[]): Promise<void>;
+}
+
+export class StorageService implements StorageSnapshotService {
   public constructor(private readonly logger?: StorageErrorLogger) {}
 
   public async get<T>(key: string, fallback: T): Promise<T> {
@@ -42,6 +47,27 @@ export class StorageService implements KeyValueStorage {
         { operation: "setMany", keys: Object.keys(values) },
         error,
       );
+      throw error;
+    }
+  }
+
+  public async getAll(): Promise<Record<string, unknown>> {
+    try {
+      return await browser.storage.local.get();
+    } catch (error) {
+      this.logger?.error("Storage operation failed.", { operation: "getAll" }, error);
+      throw error;
+    }
+  }
+
+  public async removeMany(keys: readonly string[]): Promise<void> {
+    if (keys.length === 0) {
+      return;
+    }
+    try {
+      await browser.storage.local.remove([...keys]);
+    } catch (error) {
+      this.logger?.error("Storage operation failed.", { operation: "removeMany", keys }, error);
       throw error;
     }
   }

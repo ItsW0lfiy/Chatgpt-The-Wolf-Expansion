@@ -258,6 +258,7 @@ export class FoldersRepository {
       const existing = existingIndex >= 0 ? memberships[existingIndex] : null;
       const membership: FolderConversationMembership = {
         conversationId: conversation.conversationId,
+        route: conversation.route,
         folderId,
         title: conversation.title,
         url: conversation.url,
@@ -328,7 +329,7 @@ export class FoldersRepository {
   }
 
   public async updateDetectedTitles(
-    detectedTitles: ReadonlyMap<string, { title: string; url: string }>,
+    detectedTitles: ReadonlyMap<string, { title: string; route?: "c" | "g"; url: string }>,
   ): Promise<boolean> {
     let changed = false;
     await this.enqueue(async () => {
@@ -341,6 +342,7 @@ export class FoldersRepository {
         }
         const normalized = normalizeConversationIdentity({
           conversationId: membership.conversationId,
+          route: detected.route,
           title: detected.title,
           url: detected.url,
         });
@@ -348,9 +350,11 @@ export class FoldersRepository {
           normalized.ok &&
           normalized.titleResolved &&
           (membership.title !== normalized.conversation.title ||
+            membership.route !== normalized.conversation.route ||
             membership.url !== normalized.conversation.url)
         ) {
           membership.title = normalized.conversation.title;
+          membership.route = normalized.conversation.route;
           membership.url = normalized.conversation.url;
           changed = true;
         }

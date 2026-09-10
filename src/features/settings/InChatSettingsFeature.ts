@@ -16,6 +16,8 @@ import type {
 } from "../../storage/schemas";
 import { FoldersRepository } from "../folders/FoldersRepository";
 import { FolderDisplayOverridesRepository } from "../folders/FolderDisplayOverridesRepository";
+import type { BackupService } from "../../backup/BackupService";
+import { downloadBackup, readBackupFile } from "../../backup/backupFile";
 
 export class InChatSettingsFeature implements Feature {
   public readonly id = "in-chat-settings";
@@ -42,6 +44,9 @@ export class InChatSettingsFeature implements Feature {
     private readonly restoreLegacyAccountData: (
       expectedScopeId: string,
     ) => Promise<LegacyAccountRecoveryResult>,
+    private readonly backupService: BackupService,
+    private readonly restoreBackup: (json: string) => Promise<void>,
+    private readonly getActiveScopeId: () => string | null,
     private readonly sidebarRoot: WolfSidebarRoot,
     private readonly logger: Logger,
   ) {
@@ -228,6 +233,7 @@ export class InChatSettingsFeature implements Feature {
         ),
         this.createFolderOverrideManager(),
       ]),
+      this.createBackupManager(),
       this.createSettingsGroup("Advanced", "Local diagnostics for troubleshooting.", [
         this.createCheckbox(
           "wolf-settings-debug",
@@ -253,7 +259,87 @@ export class InChatSettingsFeature implements Feature {
     this.overlay = overlay;
     this.renderFormValues();
     void this.renderLegacyRecovery();
+    void this.renderStorageHealth();
     dialog.focus();
+  }
+
+  private createBackupManager(): HTMLFieldSetElement {
+    const fieldset = createWolfElement("fieldset", "backup-manager");
+    const legend = document.createElement("legend");
+    legend.textContent = "Data & Recovery";
+    const description = document.createElement("p");
+    description.className = "wolf-settings-group-description";
+    description.textContent =
+      "Backups are JSON files you control. They can contain conversation titles, IDs, folder names, and organization metadata.";
+    const actions = document.createElement("div");
+    actions.className = "wolf-legacy-recovery-actions";
+    const createButton = document.createElement("button");
+    createButton.type = "button";
+    createButton.className = "wolf-settings-secondary-action";
+    createButton.textContent = "Create backup";
+    const restoreButton = document.createElement("button");
+    restoreButton.type = "button";
+    restoreButton.className = "wolf-settings-secondary-action";
+    restoreButton.textContent = "Restore backup (replace all Wolf data)";
+    const fileInput = document.createElement("input");
+    fileInput.type = "file";
+    fileInput.accept = "application/json,.json";
+    fileInput.hidden = true;
+    createButton.addEventListener("click", () => void this.runBackupAction(async () => {
+      await downloadBackup(this.backupService);
+      this.setStatus("Backup created. Keep the downloaded JSON file somewhere safe.");
+      await this.renderStorageHealth();
+    }));
+    restoreButton.addEventListener("click", () => fileInput.click());
+    fileInput.addEventListener("change", () => void this.runBackupAction(async () => {
+      const file = fileInput.files?.[0];
+      fileInput.value = "";
+      if (!file) {
+        return;
+      }
+      restoreButton.disabled = true;
+      try {
+        await this.restoreBackup(await readBackupFile(file));
+        this.setStatus("Backup restored. Wolf Expansion data has been reconciled.");
+        await this.renderStorageHealth();
+      } finally {
+        restoreButton.disabled = false;
+      }
+    }));
+    const health = createWolfElement("p", "storage-health");
+    health.className = "wolf-settings-group-description";
+    actions.append(createButton, restoreButton, fileInput);
+    fieldset.append(legend, description, actions, health);
+    return fieldset;
+  }
+
+  private async renderStorageHealth(): Promise<void> {
+    const health = this.overlay?.querySelector<HTMLElement>(
+      '[data-wolf-expansion="storage-health"]',
+    );
+    if (!health) {
+      return;
+    }
+    const summary = await this.backupService.getStorageHealth(this.getActiveScopeId());
+    if (!health.isConnected) {
+      return;
+    }
+    const lastBackup = summary.lastBackupAt
+      ? new Date(summary.lastBackupAt).toLocaleString()
+      : "never";
+    health.textContent =
+      `Storage schema ${summary.schemaVersion}; ${summary.knownAccountScopes} known account scope${summary.knownAccountScopes === 1 ? "" : "s"}; ` +
+      `${summary.activeScopeAvailable ? "active scope" : "no active scope"}; ` +
+      `${summary.activeFavorites} Quick Access chats, ${summary.activeFolders} folders, ${summary.activeMemberships} memberships; last backup: ${lastBackup}.`;
+  }
+
+  private async runBackupAction(action: () => Promise<void>): Promise<void> {
+    try {
+      await action();
+    } catch (error) {
+      this.logger.error("Backup operation failed.", error);
+      this.setStatus(error instanceof Error ? error.message : "Backup operation failed.");
+    }
   }
 
   private close(): void {

@@ -8,6 +8,7 @@ import { MemoryStorage } from "./helpers/MemoryStorage";
 function conversation(conversationId: string) {
   return {
     conversationId,
+    route: "c" as const,
     title: `Conversation ${conversationId}`,
     url: `https://chatgpt.com/c/${conversationId}`,
   };

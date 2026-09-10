@@ -1,6 +1,6 @@
 {
   "name": "chatgpt-the-wolf-expansion",
-  "version": "0.2.0-dev.2.2",
+  "version": "0.2.0-dev.3",
   "private": true,
   "description": "A modular, local-first Firefox and Floorp extension that adds power-user features to ChatGPT.",
   "license": "GPL-3.0-only",

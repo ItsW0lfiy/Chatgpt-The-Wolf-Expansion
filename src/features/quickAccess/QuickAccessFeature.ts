@@ -5,6 +5,7 @@ import type {
 import {
   collectDetectedConversationMetadata,
   normalizeConversationIdentity,
+  type DetectedConversationMetadata,
 } from "../../adapters/chatgpt/conversationIdentity";
 import type { Logger } from "../../core/logger";
 import type { WolfSidebarRoot } from "../../core/WolfSidebarRoot";
@@ -246,7 +247,7 @@ export class QuickAccessFeature implements Feature {
       const references = this.adapter.findConversationLinks()
         .map((link) => this.adapter.getConversationReference(link))
         .filter((reference): reference is ConversationReference => reference !== null);
-      const cachedTitles = new Map<string, string>();
+      const cachedMetadata = new Map<string, { title: string; url: string }>();
       if (work.ingestDetectedTitles) {
         const [cachedFavorites, cachedMemberships] = await Promise.all([
           this.favoritesRepository.list(),
@@ -255,17 +256,23 @@ export class QuickAccessFeature implements Feature {
             : Promise.resolve([]),
         ]);
         cachedFavorites.forEach((favorite) => {
-          cachedTitles.set(favorite.conversationId, favorite.title);
+          cachedMetadata.set(favorite.conversationId, {
+            title: favorite.title,
+            url: favorite.url,
+          });
         });
         cachedMemberships.forEach((membership) => {
-          if (!cachedTitles.has(membership.conversationId)) {
-            cachedTitles.set(membership.conversationId, membership.title);
+          if (!cachedMetadata.has(membership.conversationId)) {
+            cachedMetadata.set(membership.conversationId, {
+              title: membership.title,
+              url: membership.url,
+            });
           }
         });
       }
       const detected = work.ingestDetectedTitles
-        ? collectDetectedConversationMetadata(references, cachedTitles)
-        : new Map<string, { title: string; url: string }>();
+        ? collectDetectedConversationMetadata(references, cachedMetadata)
+        : new Map<string, DetectedConversationMetadata>();
       if (work.ingestDetectedTitles) {
         const current = this.adapter.getCurrentConversationIdentity();
         if (
@@ -277,6 +284,7 @@ export class QuickAccessFeature implements Feature {
         ) {
           detected.set(current.conversationId, {
             title: current.title,
+            route: current.route,
             url: current.url,
           });
         }
@@ -343,7 +351,7 @@ export class QuickAccessFeature implements Feature {
 
   private async logDetectedTitleDiagnostics(
     references: readonly ConversationReference[],
-    detected: ReadonlyMap<string, { title: string; url: string }>,
+    detected: ReadonlyMap<string, DetectedConversationMetadata>,
     settings: WolfExpansionSettings,
   ): Promise<Set<string>> {
     if (!settings.debug.enabled) {

@@ -1,13 +1,19 @@
-import { createConversationUrl, parseConversationId } from "./conversationUrl";
+import {
+  createConversationUrl,
+  parseConversationUrl,
+  type ConversationRoute,
+} from "./conversationUrl";
 
 export interface ConversationIdentityInput {
   conversationId?: unknown;
+  route?: unknown;
   title?: unknown;
   url?: unknown;
 }
 
 export interface NormalizedConversationIdentity {
   conversationId: string;
+  route: ConversationRoute;
   title: string;
   url: string;
 }
@@ -41,6 +47,7 @@ export interface DetectedConversationIdentityInput extends ConversationIdentityI
 
 export interface DetectedConversationMetadata {
   title: string;
+  route: ConversationRoute;
   url: string;
 }
 
@@ -84,7 +91,10 @@ export function selectConversationTitleWithSource(
 
 export function collectDetectedConversationMetadata(
   conversations: readonly DetectedConversationIdentityInput[],
-  knownTitles: ReadonlyMap<string, string> = new Map(),
+  knownMetadata: ReadonlyMap<
+    string,
+    string | { title: string; url?: string }
+  > = new Map(),
 ): Map<string, DetectedConversationMetadata> {
   const candidates = new Map<string, DetectedConversationMetadata[]>();
 
@@ -96,10 +106,10 @@ export function collectDetectedConversationMetadata(
     if (!normalized.ok || !normalized.titleResolved) {
       continue;
     }
-    const { conversationId, title, url } = normalized.conversation;
+    const { conversationId, route, title, url } = normalized.conversation;
     const existing = candidates.get(conversationId) ?? [];
     if (!existing.some((candidate) => candidate.title === title && candidate.url === url)) {
-      existing.push({ title, url });
+      existing.push({ title, route, url });
     }
     candidates.set(conversationId, existing);
   }
@@ -114,10 +124,13 @@ export function collectDetectedConversationMetadata(
     // ChatGPT can briefly keep an older duplicate row mounted while replacing a
     // renamed row. If exactly one visible candidate differs from our cached title,
     // that changed candidate is the only useful authoritative observation.
-    const knownTitle = knownTitles.get(conversationId);
+    const known = knownMetadata.get(conversationId);
+    const knownTitle = typeof known === "string" ? known : known?.title;
+    const knownUrl = typeof known === "string" ? undefined : known?.url;
     const changedChoices = knownTitle === undefined
       ? []
-      : choices.filter((choice) => choice.title !== knownTitle);
+      : choices.filter((choice) =>
+          choice.title !== knownTitle || (knownUrl !== undefined && choice.url !== knownUrl));
     if (changedChoices.length === 1) {
       detected.set(conversationId, changedChoices[0]!);
     }
@@ -134,20 +147,24 @@ export function normalizeConversationIdentity(
   }
 
   const conversationId = input.conversationId.trim();
-  const normalizedUrl = createConversationUrl(conversationId);
-  if (parseConversationId(normalizedUrl) !== conversationId) {
-    return { ok: false, reason: "conversationId is not safe for a ChatGPT conversation URL" };
-  }
-
-  if (typeof input.url !== "string" || parseConversationId(input.url) !== conversationId) {
+  if (typeof input.url !== "string") {
     return { ok: false, reason: "URL is missing, invalid, or belongs to another conversation" };
   }
+  const parsedUrl = parseConversationUrl(input.url);
+  if (!parsedUrl || parsedUrl.conversationId !== conversationId) {
+    return { ok: false, reason: "URL is missing, invalid, or belongs to another conversation" };
+  }
+  if (input.route !== undefined && input.route !== parsedUrl.route) {
+    return { ok: false, reason: "route does not match the conversation URL" };
+  }
+  const normalizedUrl = createConversationUrl(conversationId, parsedUrl.route);
 
   const resolvedTitle = normalizeConversationTitle(input.title);
   return {
     ok: true,
     conversation: {
       conversationId,
+      route: parsedUrl.route,
       title: resolvedTitle || FALLBACK_CONVERSATION_TITLE,
       url: normalizedUrl,
     },

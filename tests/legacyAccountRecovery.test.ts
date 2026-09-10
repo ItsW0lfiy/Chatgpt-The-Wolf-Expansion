@@ -24,6 +24,7 @@ const UNRELATED_SCOPE = "sha256-dddddddddddddddddddddddddddddddddddddddddddddddd
 function createLegacyData(): LegacyAccountData {
   const favorites: FavoriteConversation[] = Array.from({ length: 6 }, (_, index) => ({
     conversationId: `legacy-conversation-${index + 1}`,
+    route: "c",
     title: `Legacy conversation ${index + 1}`,
     url: `https://chatgpt.com/c/legacy-conversation-${index + 1}`,
     addedAt: index + 1,
@@ -48,6 +49,7 @@ function createLegacyData(): LegacyAccountData {
     }],
     folderMembership: [{
       conversationId: favorites[0]!.conversationId,
+      route: "c",
       folderId: "legacy-folder",
       title: favorites[0]!.title,
       url: favorites[0]!.url,
@@ -283,6 +285,7 @@ test("stable rebind uses only the explicitly recorded old scope", async () => {
   const legacy = createLegacyData();
   const unrelatedFavorite: FavoriteConversation = {
     conversationId: "unrelated-conversation",
+    route: "c",
     title: "Unrelated",
     url: "https://chatgpt.com/c/unrelated-conversation",
     addedAt: 1,

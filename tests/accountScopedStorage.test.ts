@@ -16,6 +16,7 @@ import { MemoryStorage } from "./helpers/MemoryStorage";
 
 const chat = (conversationId: string, title: string) => ({
   conversationId,
+  route: "c" as const,
   title,
   url: `https://chatgpt.com/c/${conversationId}`,
 });
@@ -93,7 +94,7 @@ test("account scope identifiers are deterministic opaque hashes", async () => {
   assert.doesNotMatch(first, /user|example/iu);
 });
 
-test("schema 8 conservatively preserves legacy unscoped organization without assigning it", async () => {
+test("schema 9 conservatively preserves legacy unscoped organization without assigning it", async () => {
   const base = new MemoryStorage();
   await base.setMany({
     [STORAGE_KEYS.schemaVersion]: 6,
@@ -130,6 +131,42 @@ test("schema 8 conservatively preserves legacy unscoped organization without ass
   assert.deepEqual(
     (await new SettingsService(base).get()).folders.chatNameDisplayOverrides,
     {},
+  );
+});
+
+test("schema 9 migrates route-less account-scoped /c/ records and rejects malformed locations", async () => {
+  const base = new MemoryStorage();
+  const scope = "sha256-eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee";
+  await base.setMany({
+    [STORAGE_KEYS.schemaVersion]: 8,
+    [getAccountScopedStorageKey(scope, STORAGE_KEYS.favorites)]: [
+      {
+        conversationId: "legacy-c",
+        title: "Legacy C",
+        url: "https://chatgpt.com/c/legacy-c",
+        addedAt: 1,
+        sortIndex: 0,
+      },
+      {
+        conversationId: "malformed",
+        title: "Malformed",
+        url: "https://example.com/c/malformed",
+        addedAt: 2,
+        sortIndex: 1,
+      },
+    ],
+  });
+  await migrateStorage(base);
+  assert.deepEqual(
+    await base.get(getAccountScopedStorageKey(scope, STORAGE_KEYS.favorites), []),
+    [{
+      conversationId: "legacy-c",
+      route: "c",
+      title: "Legacy C",
+      url: "https://chatgpt.com/c/legacy-c",
+      addedAt: 1,
+      sortIndex: 0,
+    }],
   );
 });
 

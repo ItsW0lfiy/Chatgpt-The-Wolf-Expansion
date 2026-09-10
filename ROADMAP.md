@@ -1623,16 +1623,15 @@ Target:
 - Settings foundation.
 - Native-looking sidebar UI.
 
-## v0.2 — Organization
+## v0.2 — Data Safety & Portability / Organization Reliability
 
 Target:
 
-- Tags.
-- Notes.
-- Better search.
-- Bulk chat selection.
-- Basic dashboard.
-- Import/export improvements.
+- Versioned, integrity-checked manual backup/export/import.
+- Storage migration and account-boundary resilience.
+- Reliable folder movement and hierarchy interaction.
+- Route-aware conversation navigation, including surviving `/g/` chats.
+- Tags, notes, better search, bulk selection, and the dashboard remain planned after this reliability layer is stable.
 
 ## v0.3 — Conversation QoL
 

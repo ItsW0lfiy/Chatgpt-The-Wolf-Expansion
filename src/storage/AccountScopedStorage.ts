@@ -121,3 +121,19 @@ export function getAccountScopedStorageKey(scopeId: string, logicalKey: string):
     : logicalKey;
   return `wolfExpansion.accounts.${scopeId}.${suffix}`;
 }
+
+export function parseAccountScopedStorageKey(
+  key: string,
+): { scopeId: string; logicalKey: (typeof ACCOUNT_OWNED_STORAGE_KEYS)[number] } | null {
+  const match = /^wolfExpansion\.accounts\.(sha256-[0-9a-f]{64})\.(.+)$/u.exec(key);
+  if (!match?.[1] || !match[2]) {
+    return null;
+  }
+  const logicalKey = `wolfExpansion.${match[2]}`;
+  return ACCOUNT_OWNED_KEYS.has(logicalKey)
+    ? {
+        scopeId: match[1],
+        logicalKey: logicalKey as (typeof ACCOUNT_OWNED_STORAGE_KEYS)[number],
+      }
+    : null;
+}

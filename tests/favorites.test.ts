@@ -8,6 +8,7 @@ import { MemoryStorage } from "./helpers/MemoryStorage";
 function conversation(conversationId: string, title = conversationId) {
   return {
     conversationId,
+    route: "c" as const,
     title,
     url: `https://chatgpt.com/c/${conversationId}`,
   };
@@ -59,6 +60,7 @@ test("stores only schema fields from a sidebar reference with non-cloneable extr
   assert.deepEqual(Object.keys((await repository.list())[0]!).sort(), [
     "addedAt",
     "conversationId",
+    "route",
     "sortIndex",
     "title",
     "url",

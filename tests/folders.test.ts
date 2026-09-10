@@ -18,6 +18,7 @@ function createRepository(storage = new MemoryStorage()): FoldersRepository {
 function conversation(conversationId: string, title = conversationId) {
   return {
     conversationId,
+    route: "c" as const,
     title,
     url: `https://chatgpt.com/c/${conversationId}`,
   };
@@ -87,6 +88,37 @@ test("moves folders and rejects self-parent and descendant cycles", async () => 
   await repository.moveFolder(child.id, root.id);
   await assert.rejects(repository.moveFolder(root.id, child.id), /itself or one of its descendants/);
   assert.equal(wouldCreateFolderCycle(await repository.listFolders(), root.id, child.id), true);
+});
+
+test("moves deep and large subtrees to root without losing children or memberships", async () => {
+  const repository = createRepository();
+  const rootA = await repository.createFolder("A");
+  const rootD = await repository.createFolder("D");
+  const childB = await repository.createFolder("B", rootA.id);
+  const childC = await repository.createFolder("C", childB.id);
+  const leaves = await Promise.all(
+    Array.from({ length: 30 }, (_, index) => repository.createFolder(`Leaf ${index}`, childC.id)),
+  );
+  await repository.assignConversation(childC.id, conversation("deep-chat"));
+
+  await repository.moveFolder(childB.id, null, 1);
+  let folders = await repository.listFolders();
+  assert.equal(folders.find((folder) => folder.id === childB.id)?.parentId, null);
+  assert.equal(folders.find((folder) => folder.id === childC.id)?.parentId, childB.id);
+  assert.equal(leaves.every((leaf) =>
+    folders.find((folder) => folder.id === leaf.id)?.parentId === childC.id), true);
+  assert.equal((await repository.getMembership("deep-chat"))?.folderId, childC.id);
+
+  await repository.moveFolder(childC.id, null, 0);
+  await repository.moveFolder(childB.id, rootD.id);
+  await repository.moveFolder(childB.id, rootD.id, 0);
+  for (let index = 0; index < 10; index += 1) {
+    await repository.moveFolder(childB.id, null, 1);
+    await repository.moveFolder(childB.id, rootD.id, 0);
+  }
+  folders = await repository.listFolders();
+  assert.equal(new Set(folders.map((folder) => folder.id)).size, folders.length);
+  assert.equal(folders.find((folder) => folder.id === childC.id)?.parentId, null);
 });
 
 test("reorders folders only among their siblings", async () => {
@@ -162,6 +194,7 @@ test("persists explicit structured-clone-safe membership fields", async () => {
     "assignedAt",
     "conversationId",
     "folderId",
+    "route",
     "sortIndex",
     "title",
     "url",

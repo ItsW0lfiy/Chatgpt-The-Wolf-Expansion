@@ -175,3 +175,24 @@ test("Wolf descendants are excluded from fresh native action resolution", () => 
     { disabled: false, element: wolfAction, kind: "delete", wolfOwned: true },
   ]), null);
 });
+
+test("folder root movement uses natural root insertion gaps without an artificial strip", () => {
+  const sidebar = read("src/features/quickAccess/QuickAccessSidebar.ts");
+  const css = read("src/features/quickAccess/quick-access.css");
+  assert.match(sidebar, /createInsertionTarget\("folder-insert", parentId, index, depth\)/);
+  assert.match(sidebar, /onMoveFolder\(payload\.folderId, parentId, targetIndex\)/);
+  assert.doesNotMatch(sidebar, /Move folder to Quick Access root|folder-root-drop-target/);
+  assert.doesNotMatch(css, /wolf-root-drop-target/);
+});
+
+test("drop feedback avoids rewriting an unchanged active target", () => {
+  const sidebar = read("src/features/quickAccess/QuickAccessSidebar.ts");
+  assert.match(sidebar, /this\.dragIndicator\.current === target/);
+  assert.match(sidebar, /target\.classList\.contains\(valid \? "wolf-is-valid-drop" : "wolf-is-invalid-drop"\)/);
+});
+
+test("root folders receive subtle subtree separation without changing nested rows", () => {
+  const css = read("src/features/quickAccess/quick-access.css");
+  assert.match(css, /\.wolf-folder-region\[data-parent-id=""\][\s\S]*~ \.wolf-quick-access-folder/);
+  assert.match(css, /color-mix\(in srgb, currentColor 12%, transparent\)/);
+});

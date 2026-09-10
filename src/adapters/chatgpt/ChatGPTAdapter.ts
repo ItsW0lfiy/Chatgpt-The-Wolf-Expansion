@@ -1,7 +1,12 @@
 import { isWolfElement, WOLF_ATTRIBUTE } from "../../shared/dom";
 import type { Logger } from "../../core/logger";
 import type { Unsubscribe } from "../../shared/types";
-import { createConversationUrl, parseConversationId } from "./conversationUrl";
+import {
+  createConversationUrl,
+  parseConversationId,
+  parseConversationUrl,
+  type ConversationRoute,
+} from "./conversationUrl";
 import {
   normalizeConversationIdentity,
   normalizeConversationTitle,
@@ -33,6 +38,7 @@ import {
 
 export interface ConversationIdentity {
   conversationId: string;
+  route: ConversationRoute;
   title: string;
   url: string;
 }
@@ -260,12 +266,13 @@ export class DefaultChatGPTAdapter implements ChatGPTAdapter {
   public getCurrentConversationIdentity(): ConversationIdentity | null {
     const url = window.location.href;
     this.logger.debug("Debug current-chat action: resolving current URL.", url);
-    const conversationId = this.getConversationIdFromUrl(url);
-    if (!conversationId) {
+    const parsedConversation = parseConversationUrl(url, window.location.href);
+    if (!parsedConversation) {
       this.logger.debug("Debug current-chat action aborted: current URL has no conversation ID.");
       return null;
     }
 
+    const { conversationId, route } = parsedConversation;
     this.logger.debug("Debug current-chat action: conversation ID parsed.", conversationId);
     const matchingLink = this.findConversationLinks().find(
       (link) => this.getConversationIdFromUrl(link.href) === conversationId,
@@ -275,7 +282,7 @@ export class DefaultChatGPTAdapter implements ChatGPTAdapter {
     const pageTitle = /^chatgpt$/iu.test(cleanedPageTitle) ? "" : cleanedPageTitle;
     const title = (detectedTitle ?? pageTitle) || "Current conversation";
     this.logger.debug("Debug current-chat action: title resolved.");
-    return { conversationId, title, url: createConversationUrl(conversationId) };
+    return { conversationId, route, title, url: createConversationUrl(conversationId, route) };
   }
 
   public getConversationTitle(element: HTMLElement): string | null {

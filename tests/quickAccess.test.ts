@@ -18,7 +18,7 @@ import { STORAGE_KEYS } from "../src/storage/schemas";
 import { MemoryStorage } from "./helpers/MemoryStorage";
 
 function conversation(conversationId: string, title = conversationId) {
-  return { conversationId, title, url: `https://chatgpt.com/c/${conversationId}` };
+  return { conversationId, route: "c" as const, title, url: `https://chatgpt.com/c/${conversationId}` };
 }
 
 function repositories() {
@@ -40,6 +40,7 @@ test("user-facing Favorites terminology maps to Quick Access without renaming st
 test("literal Pinned wording survives storage projection and accessibility semantics", () => {
   const favorite = {
     conversationId: "wolf-images",
+    route: "c" as const,
     title: "Pinned: Test Chat",
     url: "https://chatgpt.com/c/wolf-images",
     addedAt: 1,
@@ -95,6 +96,43 @@ test("existing metadata refresh updates root and foldered chats without changing
   assert.equal(storedMembership?.conversationId, originalMembership?.conversationId);
   assert.equal(storedMembership?.folderId, originalMembership?.folderId);
   assert.equal(storedMembership?.sortIndex, originalMembership?.sortIndex);
+});
+
+test("route metadata reconciliation preserves organization while moving a chat from /c/ to /g/", async () => {
+  const { favorites, folders } = repositories();
+  const folder = await folders.createFolder("Project-independent Wolf folder");
+  await favorites.add(conversation("moved-chat", "Before project move"));
+  await folders.assignConversation(folder.id, conversation("moved-chat", "Before project move"));
+  const favoriteOrder = (await favorites.list()).map((item) => item.conversationId);
+  const membershipOrder = (await folders.listMembership()).map((item) => item.conversationId);
+  const detected = new Map([[
+    "moved-chat",
+    {
+      title: "After ChatGPT-side move",
+      route: "g" as const,
+      url: "https://chatgpt.com/g/moved-chat",
+    },
+  ]]);
+  await Promise.all([
+    favorites.updateDetectedTitles(detected),
+    folders.updateDetectedTitles(detected),
+  ]);
+  const storedFavorite = (await favorites.list())[0];
+  const storedMembership = await folders.getMembership("moved-chat");
+  assert.equal(storedFavorite?.route, "g");
+  assert.equal(storedFavorite?.url, "https://chatgpt.com/g/moved-chat");
+  assert.equal(storedMembership?.route, "g");
+  assert.equal(storedMembership?.folderId, folder.id);
+  assert.deepEqual((await favorites.list()).map((item) => item.conversationId), favoriteOrder);
+  assert.deepEqual((await folders.listMembership()).map((item) => item.conversationId), membershipOrder);
+  const projection = buildQuickAccessProjection(
+    await favorites.list(),
+    await folders.listFolders(),
+    await folders.listMembership(),
+    { quickAccessEnabled: true, foldersEnabled: true },
+  );
+  assert.equal(projection.folders[0]?.chats.length, 1);
+  assert.equal(projection.folders[0]?.chats[0]?.url, "https://chatgpt.com/g/moved-chat");
 });
 
 test("a changed exact-ID native duplicate corrects stale stored metadata without moving the chat", async () => {

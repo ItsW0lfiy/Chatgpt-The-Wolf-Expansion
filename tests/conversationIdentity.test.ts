@@ -25,6 +25,7 @@ test("normalizes sidebar and top-right inputs to the same plain identity shape",
     ok: true,
     conversation: {
       conversationId: "chat-a",
+      route: "c",
       title: "Sidebar title",
       url: "https://chatgpt.com/c/chat-a",
     },
@@ -34,6 +35,7 @@ test("normalizes sidebar and top-right inputs to the same plain identity shape",
     ok: true,
     conversation: {
       conversationId: "chat-b",
+      route: "c",
       title: "Top-right title",
       url: "https://chatgpt.com/c/chat-b",
     },
@@ -64,6 +66,30 @@ test("rejects malformed or mismatched conversation identity", () => {
   );
 });
 
+test("normalizes surviving group-chat routes without forcing them to /c/", () => {
+  assert.deepEqual(normalizeConversationIdentity({
+    conversationId: "group-chat",
+    route: "g",
+    title: "Retired group chat",
+    url: "/g/group-chat?from=sidebar",
+  }), {
+    ok: true,
+    conversation: {
+      conversationId: "group-chat",
+      route: "g",
+      title: "Retired group chat",
+      url: "https://chatgpt.com/g/group-chat",
+    },
+    titleResolved: true,
+  });
+  assert.equal(normalizeConversationIdentity({
+    conversationId: "group-chat",
+    route: "c",
+    title: "Mismatch",
+    url: "/g/group-chat",
+  }).ok, false);
+});
+
 test("uses a safe title fallback without changing conversation identity", () => {
   assert.deepEqual(
     normalizeConversationIdentity({
@@ -75,6 +101,7 @@ test("uses a safe title fallback without changing conversation identity", () => 
       ok: true,
       conversation: {
         conversationId: "chat-untitled",
+        route: "c",
         title: "Untitled conversation",
         url: "https://chatgpt.com/c/chat-untitled",
       },
@@ -158,7 +185,7 @@ test("detected metadata rejects unresolved and conflicting transitional titles",
 
   assert.deepEqual([...detected.entries()], [[
     "stable",
-    { title: "Stable title", url: "https://chatgpt.com/c/stable" },
+    { title: "Stable title", route: "c", url: "https://chatgpt.com/c/stable" },
   ]]);
 });
 
@@ -180,6 +207,7 @@ test("a single changed duplicate supersedes the cached title during native row r
 
   assert.deepEqual(detected.get("renaming"), {
     title: "New title",
+    route: "c",
     url: "https://chatgpt.com/c/renaming",
   });
 });
@@ -200,4 +228,29 @@ test("conflicting native candidates remain rejected without one cached-title suc
     },
   ], new Map([["ambiguous", "Neither"]]));
   assert.equal(detected.has("ambiguous"), false);
+});
+
+test("one changed route supersedes a duplicate using the cached URL", () => {
+  const detected = collectDetectedConversationMetadata([
+    {
+      conversationId: "project-moved",
+      title: "Same title",
+      url: "/c/project-moved",
+      titleResolved: true,
+    },
+    {
+      conversationId: "project-moved",
+      title: "Same title",
+      url: "/g/project-moved",
+      titleResolved: true,
+    },
+  ], new Map([[
+    "project-moved",
+    { title: "Same title", url: "https://chatgpt.com/c/project-moved" },
+  ]]));
+  assert.deepEqual(detected.get("project-moved"), {
+    title: "Same title",
+    route: "g",
+    url: "https://chatgpt.com/g/project-moved",
+  });
 });

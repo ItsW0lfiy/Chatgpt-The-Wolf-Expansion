@@ -115,10 +115,24 @@
             <input id="debug-enabled" type="checkbox" />
           </label>
         </section>
+
+        <section class="settings-group" aria-labelledby="recovery-heading">
+          <h2 id="recovery-heading">Data &amp; Recovery</h2>
+          <p class="group-description">
+            Backups are JSON files you control. They can contain conversation titles, IDs,
+            folder names, and organization metadata.
+          </p>
+          <div class="backup-actions">
+            <button id="create-backup" type="button">Create backup</button>
+            <button id="restore-backup" type="button">Restore backup (replace all Wolf data)</button>
+            <input id="restore-backup-file" type="file" accept="application/json,.json" hidden />
+          </div>
+          <p id="storage-health" class="group-description">Loading storage health…</p>
+        </section>
       </form>
 
       <p id="status" class="status" role="status" aria-live="polite"></p>
-      <footer>v0.2-dev.2.1 · No telemetry · No account required</footer>
+      <footer>v0.2-dev.3 · No telemetry · No account required</footer>
     </main>
     <script src="options.js"></script>
   </body>

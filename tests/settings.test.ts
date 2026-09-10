@@ -155,3 +155,20 @@ test("in-ChatGPT settings exposes the explicit two-step legacy recovery action",
   assert.match(inChat, /Confirm restore to this account/);
   assert.match(inChat, /destination-not-empty/);
 });
+
+test("both settings frontends expose the shared backup and replace-restore workflow", () => {
+  const inChat = readFileSync(
+    path.join(process.cwd(), "src/features/settings/InChatSettingsFeature.ts"),
+    "utf8",
+  );
+  const preferences = readFileSync(
+    path.join(process.cwd(), "src/settings/options/options.html"),
+    "utf8",
+  );
+  assert.match(inChat, /Data & Recovery/);
+  assert.match(inChat, /Create backup/);
+  assert.match(inChat, /Restore backup \(replace all Wolf data\)/);
+  assert.match(preferences, /Data &amp; Recovery/);
+  assert.match(preferences, /Create backup/);
+  assert.match(preferences, /Restore backup \(replace all Wolf data\)/);
+});

@@ -23,11 +23,17 @@ import type { Unsubscribe } from "../shared/types";
 import { FeatureLifecycle } from "./lifecycle";
 import { ConsoleLogger } from "./logger";
 import { WolfSidebarRoot } from "./WolfSidebarRoot";
+import { BackupService } from "../backup/BackupService";
+import { WOLF_EXPANSION_PACKAGE_VERSION } from "./version";
 
 export class WolfExpansionApp {
   private readonly logger = new ConsoleLogger(false);
   private readonly storage = new StorageService(this.logger);
   private readonly accountStorage = new AccountScopedStorage(this.storage);
+  private readonly backupService = new BackupService(
+    this.storage,
+    WOLF_EXPANSION_PACKAGE_VERSION,
+  );
   private readonly legacyAccountRecoveryService = new LegacyAccountRecoveryService(
     this.storage,
     this.accountStorage,
@@ -51,6 +57,9 @@ export class WolfExpansionApp {
     this.folderDisplayOverridesRepository,
     this.legacyAccountRecoveryService,
     (expectedScopeId) => this.restoreLegacyAccountData(expectedScopeId),
+    this.backupService,
+    (json) => this.restoreBackup(json),
+    () => this.accountStorage.activeScopeId,
     this.sidebarRoot,
     this.logger,
   );
@@ -69,10 +78,14 @@ export class WolfExpansionApp {
   private applyingAccountEvidence: Promise<void> = Promise.resolve();
   private readonly accountTransition = new AccountScopeTransition();
   private appliedEvidenceSignature: string | null = null;
+  private backupRestoreInProgress = false;
 
   public async start(): Promise<void> {
     await migrateStorage(this.storage);
     this.settingsUnsubscribe = this.settingsService.subscribe(() => {
+      if (this.backupRestoreInProgress) {
+        return;
+      }
       this.applyingSettings = this.applyingSettings.then(
         () => this.applySettings(),
         () => this.applySettings(),
@@ -149,6 +162,25 @@ export class WolfExpansionApp {
       }
       return result;
     } finally {
+      await this.applySettings();
+    }
+  }
+
+  private async restoreBackup(json: string): Promise<void> {
+    this.backupRestoreInProgress = true;
+    await this.lifecycle.setEnabled(this.quickAccessFeature, false);
+    await Promise.all([
+      this.quickAccessFeature.whenIdle(),
+      this.favoritesRepository.whenIdle(),
+      this.foldersRepository.whenIdle(),
+      this.folderDisplayOverridesRepository.whenIdle(),
+    ]);
+    try {
+      await this.backupService.restoreBackup(json);
+      await migrateStorage(this.storage);
+      this.logger.debug("Wolf Expansion backup restored.");
+    } finally {
+      this.backupRestoreInProgress = false;
       await this.applySettings();
     }
   }

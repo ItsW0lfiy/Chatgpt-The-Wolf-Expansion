@@ -1,4 +1,6 @@
-export const STORAGE_SCHEMA_VERSION = 8;
+import type { ConversationRoute } from "../shared/conversation";
+
+export const STORAGE_SCHEMA_VERSION = 9;
 
 export type ItemNameDisplayMode = "compact" | "full";
 
@@ -13,10 +15,13 @@ export const STORAGE_KEYS = {
   quickAccessUiState: "wolfExpansion.quickAccessUiState",
   folderChatNameDisplayOverrides: "wolfExpansion.folderChatNameDisplayOverrides",
   legacyAccountData: "wolfExpansion.legacyAccountData",
+  lastBackupAt: "wolfExpansion.lastBackupAt",
+  preRestoreSafetySnapshot: "wolfExpansion.preRestoreSafetySnapshot",
 } as const;
 
 export interface FavoriteConversation {
   conversationId: string;
+  route: ConversationRoute;
   title: string;
   url: string;
   addedAt: number;
@@ -38,6 +43,7 @@ export interface FolderRecord {
 
 export interface FolderConversationMembership {
   conversationId: string;
+  route: ConversationRoute;
   folderId: string;
   title: string;
   url: string;

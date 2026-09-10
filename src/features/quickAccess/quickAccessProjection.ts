@@ -15,6 +15,7 @@ import {
 
 export interface QuickAccessChatView {
   conversationId: string;
+  route: "c" | "g";
   title: string;
   url: string;
   sortIndex: number;
@@ -72,6 +73,7 @@ export function buildQuickAccessProjection(
       .sort(compareBySortIndex)
       .map((favorite) => ({
         conversationId: favorite.conversationId,
+        route: favorite.route,
         title: normalizeConversationTitle(favorite.title) || "Untitled conversation",
         url: favorite.url,
         sortIndex: favorite.sortIndex,
@@ -105,6 +107,7 @@ export function buildQuickAccessProjection(
     }
     folder.chats.push({
       conversationId: membership.conversationId,
+      route: membership.route,
       title: normalizeConversationTitle(membership.title) || "Untitled conversation",
       url: membership.url,
       sortIndex: membership.sortIndex,

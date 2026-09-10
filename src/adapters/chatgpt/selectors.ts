@@ -6,7 +6,8 @@ export const CHATGPT_SELECTORS = {
     "aside nav",
     "nav",
   ],
-  conversationLink: 'a[href^="/c/"], a[href^="https://chatgpt.com/c/"]',
+  conversationLink:
+    'a[href^="/c/"], a[href^="/g/"], a[href^="https://chatgpt.com/c/"], a[href^="https://chatgpt.com/g/"]',
   menu: '[role="menu"], [data-radix-menu-content], [data-headlessui-menu-items]',
   menuItem: '[role="menuitem"]',
   button: 'button, [role="button"]',

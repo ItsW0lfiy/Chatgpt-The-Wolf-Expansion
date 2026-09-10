@@ -18,6 +18,7 @@ function folder(id: string, parentId: string | null, sortIndex: number): FolderR
 function favorite(id: string, sortIndex: number): FavoriteConversation {
   return {
     conversationId: id,
+    route: "c",
     title: id,
     url: `https://chatgpt.com/c/${id}`,
     addedAt: sortIndex + 1,
@@ -32,6 +33,7 @@ function membership(
 ): FolderConversationMembership {
   return {
     conversationId,
+    route: "c",
     folderId,
     title: conversationId,
     url: `https://chatgpt.com/c/${conversationId}`,

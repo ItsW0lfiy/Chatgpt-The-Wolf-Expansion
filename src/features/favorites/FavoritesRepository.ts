@@ -12,6 +12,7 @@ import type { KeyValueStorage } from "../../storage/StorageService";
 
 export interface NewFavoriteConversation {
   conversationId: string;
+  route?: "c" | "g";
   title: string;
   url: string;
 }
@@ -40,20 +41,27 @@ export class FavoritesRepository {
   }
 
   public async add(conversation: NewFavoriteConversation): Promise<void> {
+    const normalized = normalizeConversationIdentity(conversation);
+    if (!normalized.ok) {
+      throw new Error(`Cannot add Favorite: ${normalized.reason}.`);
+    }
+    const safeConversation = normalized.conversation;
     await this.enqueue(async () => {
       const favorites = await this.list();
       const existing = favorites.find(
-        (favorite) => favorite.conversationId === conversation.conversationId,
+        (favorite) => favorite.conversationId === safeConversation.conversationId,
       );
 
       if (existing) {
-        existing.title = conversation.title;
-        existing.url = conversation.url;
+        existing.title = safeConversation.title;
+        existing.route = safeConversation.route;
+        existing.url = safeConversation.url;
       } else {
         favorites.push({
-          conversationId: conversation.conversationId,
-          title: conversation.title,
-          url: conversation.url,
+          conversationId: safeConversation.conversationId,
+          route: safeConversation.route,
+          title: safeConversation.title,
+          url: safeConversation.url,
           addedAt: Date.now(),
           sortIndex: favorites.length,
         });
@@ -62,9 +70,9 @@ export class FavoritesRepository {
       await this.save(favorites);
       this.emitChanged({
         type: existing ? "metadata-updated" : "added",
-        conversationId: conversation.conversationId,
+        conversationId: safeConversation.conversationId,
       });
-      this.logger?.debug(existing ? "Favorite metadata updated." : "Favorite added.", conversation.conversationId);
+      this.logger?.debug(existing ? "Favorite metadata updated." : "Favorite added.", safeConversation.conversationId);
     });
   }
 
@@ -85,26 +93,32 @@ export class FavoritesRepository {
   }
 
   public async toggle(conversation: NewFavoriteConversation): Promise<boolean> {
+    const normalized = normalizeConversationIdentity(conversation);
+    if (!normalized.ok) {
+      throw new Error(`Cannot toggle Favorite: ${normalized.reason}.`);
+    }
+    const safeConversation = normalized.conversation;
     let isNowFavorite = false;
 
     this.logger?.debug("Favorite pipeline: repository toggle called.", {
-      conversationId: conversation.conversationId,
-      url: conversation.url,
+      conversationId: safeConversation.conversationId,
+      url: safeConversation.url,
     });
 
     await this.enqueue(async () => {
       const favorites = await this.list();
       const existingIndex = favorites.findIndex(
-        (favorite) => favorite.conversationId === conversation.conversationId,
+        (favorite) => favorite.conversationId === safeConversation.conversationId,
       );
 
       if (existingIndex >= 0) {
         favorites.splice(existingIndex, 1);
       } else {
         favorites.push({
-          conversationId: conversation.conversationId,
-          title: conversation.title,
-          url: conversation.url,
+          conversationId: safeConversation.conversationId,
+          route: safeConversation.route,
+          title: safeConversation.title,
+          url: safeConversation.url,
           addedAt: Date.now(),
           sortIndex: favorites.length,
         });
@@ -114,9 +128,9 @@ export class FavoritesRepository {
       await this.save(favorites);
       this.emitChanged({
         type: isNowFavorite ? "added" : "removed",
-        conversationId: conversation.conversationId,
+        conversationId: safeConversation.conversationId,
       });
-      this.logger?.debug(isNowFavorite ? "Favorite added." : "Favorite removed.", conversation.conversationId);
+      this.logger?.debug(isNowFavorite ? "Favorite added." : "Favorite removed.", safeConversation.conversationId);
     });
 
     return isNowFavorite;
@@ -142,7 +156,7 @@ export class FavoritesRepository {
   }
 
   public async updateDetectedTitles(
-    detectedTitles: ReadonlyMap<string, { title: string; url: string }>,
+    detectedTitles: ReadonlyMap<string, { title: string; route?: "c" | "g"; url: string }>,
   ): Promise<boolean> {
     let changed = false;
 
@@ -155,6 +169,7 @@ export class FavoritesRepository {
         }
         const normalized = normalizeConversationIdentity({
           conversationId: favorite.conversationId,
+          route: detected.route,
           title: detected.title,
           url: detected.url,
         });
@@ -162,9 +177,11 @@ export class FavoritesRepository {
           normalized.ok &&
           normalized.titleResolved &&
           (favorite.title !== normalized.conversation.title ||
+            favorite.route !== normalized.conversation.route ||
             favorite.url !== normalized.conversation.url)
         ) {
           favorite.title = normalized.conversation.title;
+          favorite.route = normalized.conversation.route;
           favorite.url = normalized.conversation.url;
           changed = true;
         }

@@ -1,4 +1,5 @@
 import { DEFAULT_SETTINGS } from "../settings/defaults";
+import { createConversationUrl, parseConversationUrl } from "../adapters/chatgpt/conversationUrl";
 import { pruneFolderChatNameDisplayOverrides } from "../settings/folderDisplayMode";
 import {
   STORAGE_KEYS,
@@ -157,6 +158,34 @@ export async function migrateStorage(storage: KeyValueStorage): Promise<void> {
   if (Object.keys(changes).length > 0) {
     await storage.setMany(changes);
   }
+
+  if ("getAll" in storage && typeof storage.getAll === "function") {
+    const allValues = await (storage as KeyValueStorage & {
+      getAll(): Promise<Record<string, unknown>>;
+    }).getAll();
+    const scopedChanges: Record<string, unknown> = {};
+    for (const [key, value] of Object.entries(allValues)) {
+      if (/^wolfExpansion\.accounts\.sha256-[0-9a-f]{64}\.favorites$/u.test(key)) {
+        const normalized = normalizeFavorites(value);
+        if (JSON.stringify(value) !== JSON.stringify(normalized)) {
+          scopedChanges[key] = normalized;
+        }
+      } else if (/^wolfExpansion\.accounts\.sha256-[0-9a-f]{64}\.folderMembership$/u.test(key)) {
+        const prefix = key.slice(0, -"folderMembership".length);
+        const folders = normalizeFolders(allValues[`${prefix}folders`]);
+        const normalized = normalizeFolderMembership(
+          value,
+          new Set(folders.map((folder) => folder.id)),
+        );
+        if (JSON.stringify(value) !== JSON.stringify(normalized)) {
+          scopedChanges[key] = normalized;
+        }
+      }
+    }
+    if (Object.keys(scopedChanges).length > 0) {
+      await storage.setMany(scopedChanges);
+    }
+  }
 }
 
 export function normalizeLegacyAccountData(value: unknown): LegacyAccountData | null {
@@ -283,18 +312,20 @@ export function normalizeFavorites(value: unknown): FavoriteConversation[] {
       continue;
     }
 
+    const identity = normalizeStoredConversationLocation(item, conversationId);
+    if (!identity) {
+      continue;
+    }
+
     const title = typeof item.title === "string" && item.title.trim()
       ? item.title.trim()
       : "Untitled conversation";
-    const url = typeof item.url === "string" && item.url.startsWith("https://chatgpt.com/c/")
-      ? item.url
-      : `https://chatgpt.com/c/${encodeURIComponent(conversationId)}`;
-
     seenIds.add(conversationId);
     favorites.push({
       conversationId,
+      route: identity.route,
       title,
-      url,
+      url: identity.url,
       addedAt: typeof item.addedAt === "number" ? item.addedAt : Date.now(),
       sortIndex: typeof item.sortIndex === "number" ? item.sortIndex : favorites.length,
     });
@@ -389,21 +420,46 @@ export function normalizeFolderMembership(
     ) {
       continue;
     }
+    const identity = normalizeStoredConversationLocation(item, conversationId);
+    if (!identity) {
+      continue;
+    }
     const title = typeof item.title === "string" && item.title.trim()
       ? item.title.trim()
       : "Untitled conversation";
     seenConversationIds.add(conversationId);
     memberships.push({
       conversationId,
+      route: identity.route,
       folderId,
       title,
-      url: `https://chatgpt.com/c/${encodeURIComponent(conversationId)}`,
+      url: identity.url,
       assignedAt: typeof item.assignedAt === "number" ? item.assignedAt : Date.now(),
       sortIndex: typeof item.sortIndex === "number" ? item.sortIndex : memberships.length,
     });
   }
 
   return normalizeMembershipIndexes(memberships);
+}
+
+function normalizeStoredConversationLocation(
+  item: Record<string, unknown>,
+  conversationId: string,
+): { route: "c" | "g"; url: string } | null {
+  if (typeof item.url !== "string") {
+    return null;
+  }
+  const parsed = parseConversationUrl(item.url);
+  if (!parsed || parsed.conversationId !== conversationId) {
+    return null;
+  }
+  if (item.route !== undefined && item.route !== parsed.route) {
+    return null;
+  }
+  return {
+    route: parsed.route,
+    url: createConversationUrl(conversationId, parsed.route),
+  };
 }
 
 export function normalizeFoldersUiState(value: unknown): FoldersUiState {

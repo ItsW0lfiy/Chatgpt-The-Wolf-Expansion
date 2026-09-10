@@ -1,7 +1,7 @@
-import type { KeyValueStorage } from "../../src/storage/StorageService";
+import type { StorageSnapshotService } from "../../src/storage/StorageService";
 import type { Unsubscribe } from "../../src/shared/types";
 
-export class MemoryStorage implements KeyValueStorage {
+export class MemoryStorage implements StorageSnapshotService {
   private readonly values = new Map<string, unknown>();
   private readonly listeners = new Map<string, Set<() => void>>();
 
@@ -20,6 +20,20 @@ export class MemoryStorage implements KeyValueStorage {
     for (const [key, value] of Object.entries(values)) {
       this.values.set(key, structuredClone(value));
       this.notify(key);
+    }
+  }
+
+  public async getAll(): Promise<Record<string, unknown>> {
+    return Object.fromEntries(
+      [...this.values.entries()].map(([key, value]) => [key, structuredClone(value)]),
+    );
+  }
+
+  public async removeMany(keys: readonly string[]): Promise<void> {
+    for (const key of keys) {
+      if (this.values.delete(key)) {
+        this.notify(key);
+      }
     }
   }
 
