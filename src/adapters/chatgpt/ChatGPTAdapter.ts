@@ -282,7 +282,7 @@ export class DefaultChatGPTAdapter implements ChatGPTAdapter {
     const pageTitle = /^chatgpt$/iu.test(cleanedPageTitle) ? "" : cleanedPageTitle;
     const title = (detectedTitle ?? pageTitle) || "Current conversation";
     this.logger.debug("Debug current-chat action: title resolved.");
-    return { conversationId, route, title, url: createConversationUrl(conversationId, route) };
+    return { conversationId, route, title, url: parsedConversation.canonicalUrl };
   }
 
   public getConversationTitle(element: HTMLElement): string | null {

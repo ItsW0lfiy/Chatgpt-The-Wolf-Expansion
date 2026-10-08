@@ -1,5 +1,5 @@
 import { DEFAULT_SETTINGS } from "../settings/defaults";
-import { createConversationUrl, parseConversationUrl } from "../adapters/chatgpt/conversationUrl";
+import { parseConversationUrl } from "../adapters/chatgpt/conversationUrl";
 import { pruneFolderChatNameDisplayOverrides } from "../settings/folderDisplayMode";
 import {
   STORAGE_KEYS,
@@ -458,7 +458,7 @@ function normalizeStoredConversationLocation(
   }
   return {
     route: parsed.route,
-    url: createConversationUrl(conversationId, parsed.route),
+    url: parsed.canonicalUrl,
   };
 }
 

@@ -1,8 +1,4 @@
-import {
-  createConversationUrl,
-  parseConversationUrl,
-  type ConversationRoute,
-} from "./conversationUrl";
+import { parseConversationUrl, type ConversationRoute } from "./conversationUrl";
 
 export interface ConversationIdentityInput {
   conversationId?: unknown;
@@ -157,7 +153,7 @@ export function normalizeConversationIdentity(
   if (input.route !== undefined && input.route !== parsedUrl.route) {
     return { ok: false, reason: "route does not match the conversation URL" };
   }
-  const normalizedUrl = createConversationUrl(conversationId, parsedUrl.route);
+  const normalizedUrl = parsedUrl.canonicalUrl;
 
   const resolvedTitle = normalizeConversationTitle(input.title);
   return {
