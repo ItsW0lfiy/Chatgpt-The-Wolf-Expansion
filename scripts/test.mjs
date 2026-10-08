@@ -25,6 +25,7 @@ const tests = [
   "tests/legacyAccountRecovery.test.ts",
   "tests/menuContext.test.ts",
   "tests/nativeConversationActions.test.ts",
+  "tests/navigationCompatibility.test.ts",
   "tests/outsideInteraction.test.ts",
   "tests/quickAccess.test.ts",
   "tests/quickAccessMembership.test.ts",

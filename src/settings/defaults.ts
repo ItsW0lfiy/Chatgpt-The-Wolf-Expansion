@@ -6,6 +6,9 @@ export const DEFAULT_SETTINGS: WolfExpansionSettings = {
   debug: {
     enabled: false,
   },
+  compatibility: {
+    navigationFixes: false,
+  },
   favorites: {
     enabled: true,
     showIcon: true,

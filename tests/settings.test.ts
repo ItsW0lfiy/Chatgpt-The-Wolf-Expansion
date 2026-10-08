@@ -27,6 +27,7 @@ test("migrates older settings and adds the current folders defaults", () => {
   assert.equal(migrated.schemaVersion, STORAGE_SCHEMA_VERSION);
   assert.deepEqual(migrated.debug, { enabled: true });
   assert.equal(migrated.enabled, false);
+  assert.deepEqual(migrated.compatibility, { navigationFixes: false });
   assert.equal(migrated.favorites.showIcon, false);
   assert.equal(migrated.favorites.itemNameDisplay, "compact");
   assert.deepEqual(migrated.folders, DEFAULT_SETTINGS.folders);
@@ -58,6 +59,20 @@ test("merges partial folder settings without resetting sibling values", async ()
   assert.equal(updated.folders.enabled, false);
   assert.equal(updated.folders.showIcons, false);
   assert.equal(updated.folders.rememberCollapsed, true);
+});
+
+test("navigation compatibility is opt-in, migrates safely, and updates independently", async () => {
+  assert.equal(DEFAULT_SETTINGS.compatibility.navigationFixes, false);
+  assert.equal(normalizeSettings({ schemaVersion: 9 }).compatibility.navigationFixes, false);
+
+  const settingsService = new SettingsService(new MemoryStorage());
+  const enabled = await settingsService.update({
+    compatibility: { navigationFixes: true },
+  });
+  assert.equal(enabled.compatibility.navigationFixes, true);
+  assert.equal(enabled.enabled, true);
+  assert.deepEqual(enabled.favorites, DEFAULT_SETTINGS.favorites);
+  assert.deepEqual(enabled.folders, DEFAULT_SETTINGS.folders);
 });
 
 test("migrates and updates the shared Quick Access item-name display mode", async () => {

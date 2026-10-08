@@ -234,7 +234,12 @@ export class InChatSettingsFeature implements Feature {
         this.createFolderOverrideManager(),
       ]),
       this.createBackupManager(),
-      this.createSettingsGroup("Advanced", "Local diagnostics for troubleshooting.", [
+      this.createSettingsGroup("Advanced", "Compatibility and local diagnostics.", [
+        this.createCheckbox(
+          "wolf-settings-navigation-fixes",
+          "Navigation compatibility fixes",
+          "Restores normal conversation keyboard scrolling and middle-click autoscroll when ChatGPT captures focus or navigation input.",
+        ),
         this.createCheckbox(
           "wolf-settings-debug",
           "Debug logging",
@@ -640,6 +645,10 @@ export class InChatSettingsFeature implements Feature {
 
     this.setCheckbox("wolf-settings-enabled", this.settings.enabled);
     this.setCheckbox("wolf-settings-debug", this.settings.debug.enabled);
+    this.setCheckbox(
+      "wolf-settings-navigation-fixes",
+      this.settings.compatibility.navigationFixes,
+    );
     this.setCheckbox("wolf-settings-favorites-enabled", this.settings.favorites.enabled);
     this.setCheckbox("wolf-settings-show-icon", this.settings.favorites.showIcon);
     this.setSelect(
@@ -665,6 +674,9 @@ export class InChatSettingsFeature implements Feature {
         enabled: this.getCheckbox("wolf-settings-enabled"),
         debug: {
           enabled: this.getCheckbox("wolf-settings-debug"),
+        },
+        compatibility: {
+          navigationFixes: this.getCheckbox("wolf-settings-navigation-fixes"),
         },
         favorites: {
           enabled: this.getCheckbox("wolf-settings-favorites-enabled"),

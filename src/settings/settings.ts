@@ -13,6 +13,9 @@ export interface SettingsUpdate {
   debug?: {
     enabled?: boolean;
   };
+  compatibility?: {
+    navigationFixes?: boolean;
+  };
   favorites?: {
     enabled?: boolean;
     showIcon?: boolean;
@@ -46,6 +49,10 @@ export class SettingsService {
       enabled: update.enabled ?? current.enabled,
       debug: {
         enabled: update.debug?.enabled ?? current.debug.enabled,
+      },
+      compatibility: {
+        navigationFixes:
+          update.compatibility?.navigationFixes ?? current.compatibility.navigationFixes,
       },
       favorites: {
         enabled: update.favorites?.enabled ?? current.favorites.enabled,

@@ -15,6 +15,11 @@
   "content_scripts": [
     {
       "matches": ["https://chatgpt.com/*"],
+      "js": ["navigation-compat.js"],
+      "run_at": "document_start"
+    },
+    {
+      "matches": ["https://chatgpt.com/*"],
       "js": ["content.js"],
       "css": ["content.css"],
       "run_at": "document_idle"

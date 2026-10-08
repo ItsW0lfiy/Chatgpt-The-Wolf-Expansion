@@ -259,6 +259,7 @@ export function hasLegacyOrganizationData(legacy: LegacyAccountData): boolean {
 export function normalizeSettings(value: unknown): WolfExpansionSettings {
   const root = isRecord(value) ? value : {};
   const debug = isRecord(root.debug) ? root.debug : {};
+  const compatibility = isRecord(root.compatibility) ? root.compatibility : {};
   const favorites = isRecord(root.favorites) ? root.favorites : {};
   const folders = isRecord(root.folders) ? root.folders : {};
 
@@ -269,6 +270,12 @@ export function normalizeSettings(value: unknown): WolfExpansionSettings {
       enabled: readBoolean(
         debug.enabled,
         readBoolean(root.debugLogging, DEFAULT_SETTINGS.debug.enabled),
+      ),
+    },
+    compatibility: {
+      navigationFixes: readBoolean(
+        compatibility.navigationFixes,
+        DEFAULT_SETTINGS.compatibility.navigationFixes,
       ),
     },
     favorites: {

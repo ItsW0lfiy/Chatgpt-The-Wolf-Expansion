@@ -1,6 +1,6 @@
 import type { ConversationRoute } from "../shared/conversation";
 
-export const STORAGE_SCHEMA_VERSION = 9;
+export const STORAGE_SCHEMA_VERSION = 10;
 
 export type ItemNameDisplayMode = "compact" | "full";
 
@@ -84,6 +84,9 @@ export interface WolfExpansionSettings {
   enabled: boolean;
   debug: {
     enabled: boolean;
+  };
+  compatibility: {
+    navigationFixes: boolean;
   };
   favorites: {
     enabled: boolean;

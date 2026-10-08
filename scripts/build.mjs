@@ -35,6 +35,7 @@ await copyStaticFiles();
 const buildContext = await context({
   entryPoints: {
     content: "src/content.ts",
+    "navigation-compat": "src/navigation-compat.ts",
     "options/options": "src/settings/options/options.ts",
   },
   bundle: true,

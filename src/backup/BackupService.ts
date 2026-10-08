@@ -445,6 +445,9 @@ function isValidSettings(value: unknown): value is WolfExpansionSettings {
   return Number.isInteger(value.schemaVersion) &&
     typeof value.enabled === "boolean" &&
     typeof value.debug.enabled === "boolean" &&
+    (value.compatibility === undefined ||
+      (isRecord(value.compatibility) &&
+        typeof value.compatibility.navigationFixes === "boolean")) &&
     typeof value.favorites.enabled === "boolean" &&
     typeof value.favorites.showIcon === "boolean" &&
     typeof value.favorites.rememberCollapsed === "boolean" &&

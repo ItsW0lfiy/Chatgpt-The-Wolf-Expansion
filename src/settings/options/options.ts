@@ -36,6 +36,7 @@ async function initializeOptions(): Promise<void> {
 
   const enabled = requireCheckbox("enabled");
   const debugEnabled = requireCheckbox("debug-enabled");
+  const navigationFixes = requireCheckbox("navigation-fixes");
   const favoritesEnabled = requireCheckbox("favorites-enabled");
   const showIcon = requireCheckbox("favorites-show-icon");
   const rememberCollapsed = requireCheckbox("favorites-remember-collapsed");
@@ -47,6 +48,7 @@ async function initializeOptions(): Promise<void> {
     const settings = await settingsService.get();
     enabled.checked = settings.enabled;
     debugEnabled.checked = settings.debug.enabled;
+    navigationFixes.checked = settings.compatibility.navigationFixes;
     favoritesEnabled.checked = settings.favorites.enabled;
     showIcon.checked = settings.favorites.showIcon;
     rememberCollapsed.checked = settings.favorites.rememberCollapsed;
@@ -122,6 +124,9 @@ async function initializeOptions(): Promise<void> {
         enabled: enabled.checked,
         debug: {
           enabled: debugEnabled.checked,
+        },
+        compatibility: {
+          navigationFixes: navigationFixes.checked,
         },
         favorites: {
           enabled: favoritesEnabled.checked,
