@@ -105,6 +105,14 @@ npm test
 npm run build
 ```
 
+After the initial `npm install` or `npm ci`, run the complete validation and build workflow with one command:
+
+```bash
+npm run all
+```
+
+This runs the TypeScript checker, complete automated test suite, and extension build in sequence. The unpacked result is written to `dist/`.
+
 The unpacked development extension is generated in `dist/`. Node.js and npm are development tools only; the built extension has no external runtime or CDN dependencies.
 
 For automatic TypeScript rebuilds during development:

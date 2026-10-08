@@ -6,6 +6,7 @@
   "license": "GPL-3.0-only",
   "type": "module",
   "scripts": {
+    "all": "npm run typecheck && npm test && npm run build",
     "build": "node scripts/build.mjs",
     "test": "node scripts/test.mjs",
     "watch": "node scripts/build.mjs --watch",
