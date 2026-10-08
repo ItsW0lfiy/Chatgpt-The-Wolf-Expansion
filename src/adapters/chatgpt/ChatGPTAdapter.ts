@@ -133,7 +133,9 @@ export class DefaultChatGPTAdapter implements ChatGPTAdapter {
     for (const selector of CHATGPT_SELECTORS.sidebarCandidates) {
       const candidates = document.querySelectorAll<HTMLElement>(selector);
       const withConversation = Array.from(candidates).find((candidate) =>
-        candidate.querySelector(CHATGPT_SELECTORS.conversationLink),
+        candidate.querySelector(CHATGPT_SELECTORS.conversationLink) ||
+        candidate.querySelector(CHATGPT_SELECTORS.sidebarScrollBody) ||
+        candidate.querySelector(CHATGPT_SELECTORS.sidebarSection),
       );
 
       if (withConversation) {
@@ -152,13 +154,16 @@ export class DefaultChatGPTAdapter implements ChatGPTAdapter {
       return null;
     }
 
+    const sectionRoot = sidebar.querySelector<HTMLElement>(
+      CHATGPT_SELECTORS.sidebarScrollBody,
+    ) ?? sidebar;
     const pinnedMarker = this.findSidebarSectionMarker(sidebar, "pinned");
     const historyMarker = this.findSidebarSectionMarker(sidebar, "history");
     if (pinnedMarker && historyMarker) {
       const sharedParent = this.findLowestSharedParent(
         pinnedMarker,
         historyMarker,
-        sidebar,
+        sectionRoot,
       );
       const pinnedSection = sharedParent
         ? this.findDirectChildContaining(sharedParent, pinnedMarker)
@@ -187,7 +192,7 @@ export class DefaultChatGPTAdapter implements ChatGPTAdapter {
 
     const singleMarker = pinnedMarker ?? historyMarker;
     if (singleMarker) {
-      const section = this.findStableSectionBoundary(singleMarker, sidebar);
+      const section = this.findStableSectionBoundary(singleMarker, sectionRoot);
       if (section?.parentElement instanceof HTMLElement) {
         if (pinnedMarker) {
           this.logNativePinnedState(pinnedMarker);
@@ -205,7 +210,7 @@ export class DefaultChatGPTAdapter implements ChatGPTAdapter {
       }
     }
 
-    const nativeSections = Array.from(sidebar.children).filter(
+    const nativeSections = Array.from(sectionRoot.children).filter(
       (element): element is HTMLElement =>
         element instanceof HTMLElement && !isWolfElement(element),
     );
@@ -223,23 +228,27 @@ export class DefaultChatGPTAdapter implements ChatGPTAdapter {
         beforeHistory: sectionKinds[insertionIndex] === "history",
       });
       return {
-        parent: sidebar,
+        parent: sectionRoot,
         before,
         placement: pinnedIndex >= 0 ? "before-pinned" : "before-history",
       };
     }
 
     const firstConversationLink = this.findConversationLinks()[0];
-    if (!firstConversationLink || !sidebar.contains(firstConversationLink)) {
-      return { parent: sidebar, before: sidebar.lastElementChild, placement: "fallback" };
+    if (!firstConversationLink || !sectionRoot.contains(firstConversationLink)) {
+      return {
+        parent: sectionRoot,
+        before: sectionRoot.lastElementChild,
+        placement: "fallback",
+      };
     }
 
     let section: Element = firstConversationLink;
-    while (section.parentElement && section.parentElement !== sidebar) {
+    while (section.parentElement && section.parentElement !== sectionRoot) {
       section = section.parentElement;
     }
 
-    return { parent: sidebar, before: section, placement: "fallback" };
+    return { parent: sectionRoot, before: section, placement: "fallback" };
   }
 
   public findConversationLinks(): HTMLAnchorElement[] {
@@ -383,27 +392,31 @@ export class DefaultChatGPTAdapter implements ChatGPTAdapter {
             this.isLikelyConversationRowAction(control),
         );
         const nativeControl = nativeControls[0];
-        if (nativeControl?.parentElement) {
+        const nativeActionTarget = nativeControl
+          ? this.findNativeActionInsertionTarget(candidate, nativeControls, link)
+          : null;
+        if (nativeActionTarget) {
           this.logger.debug("Native row actions detected.", {
             conversationId: expectedConversationId,
             count: nativeControls.length,
           });
           return {
             row: candidate,
-            parent: nativeControl.parentElement,
-            before: nativeControl,
+            ...nativeActionTarget,
             strategy: "native-action-group",
           };
         }
 
-        if (!rowOwnedFallback && candidate instanceof HTMLElement) {
+        if (candidate instanceof HTMLElement) {
           const directLinkChild = this.findDirectChildContaining(candidate, link);
-          rowOwnedFallback = {
-            row: candidate,
-            parent: candidate,
-            before: directLinkChild?.nextElementSibling ?? null,
-            strategy: "row-owned-sibling",
-          };
+          if (directLinkChild) {
+            rowOwnedFallback = {
+              row: candidate,
+              parent: candidate,
+              before: directLinkChild.nextElementSibling,
+              strategy: "row-owned-sibling",
+            };
+          }
         }
       }
       candidate = candidate.parentElement;
@@ -1230,6 +1243,7 @@ export class DefaultChatGPTAdapter implements ChatGPTAdapter {
     kind: Exclude<SidebarSectionKind, "other">,
   ): HTMLElement | null {
     const candidates = [
+      ...sidebar.querySelectorAll<HTMLElement>(CHATGPT_SELECTORS.sidebarSection),
       sidebar,
       ...sidebar.querySelectorAll<HTMLElement>(CHATGPT_SELECTORS.sidebarSectionLabel),
     ];
@@ -1246,6 +1260,7 @@ export class DefaultChatGPTAdapter implements ChatGPTAdapter {
 
   private getSidebarMarkerKind(element: HTMLElement): SidebarSectionKind {
     const descriptors = [
+      element.getAttribute("data-app-action-sidebar-section-heading"),
       element.getAttribute("aria-label"),
       element.getAttribute("title"),
       element.getAttribute("data-testid"),
@@ -1296,6 +1311,23 @@ export class DefaultChatGPTAdapter implements ChatGPTAdapter {
     marker: HTMLElement,
     sidebar: HTMLElement,
   ): HTMLElement | null {
+    const semanticSection = marker.matches(CHATGPT_SELECTORS.sidebarSection)
+      ? marker
+      : marker.closest<HTMLElement>(CHATGPT_SELECTORS.sidebarSection);
+    if (semanticSection && sidebar.contains(semanticSection)) {
+      const semanticContainer = semanticSection.closest<HTMLElement>(
+        CHATGPT_SELECTORS.sidebarSectionContainer,
+      );
+      if (
+        semanticContainer &&
+        semanticContainer !== sidebar &&
+        sidebar.contains(semanticContainer)
+      ) {
+        return semanticContainer;
+      }
+      return semanticSection;
+    }
+
     let candidate: HTMLElement | null = marker;
     while (candidate && candidate !== sidebar) {
       if (
@@ -1316,6 +1348,45 @@ export class DefaultChatGPTAdapter implements ChatGPTAdapter {
     return marker.parentElement && marker.parentElement !== sidebar
       ? marker.parentElement
       : marker;
+  }
+
+  private findNativeActionInsertionTarget(
+    row: HTMLElement,
+    controls: readonly HTMLElement[],
+    conversationLink: HTMLAnchorElement,
+  ): Pick<ConversationActionInsertionTarget, "parent" | "before"> | null {
+    const firstControl = controls[0];
+    if (!firstControl) {
+      return null;
+    }
+
+    let actionGroup = firstControl.parentElement;
+    while (
+      actionGroup &&
+      actionGroup !== row &&
+      controls.some((control) => !actionGroup?.contains(control))
+    ) {
+      actionGroup = actionGroup.parentElement;
+    }
+    if (!actionGroup || actionGroup === row || actionGroup.contains(conversationLink)) {
+      return null;
+    }
+
+    if (
+      controls.length === 1 &&
+      actionGroup.parentElement &&
+      actionGroup.parentElement !== row
+    ) {
+      const isControlWrapper = actionGroup.getAttribute("role") === "presentation" ||
+        (actionGroup.tagName === "SPAN" && actionGroup.hasAttribute("data-state"));
+      const parent = actionGroup.parentElement;
+      if (isControlWrapper && !parent.contains(conversationLink)) {
+        actionGroup = parent;
+      }
+    }
+
+    const before = this.findDirectChildContaining(actionGroup, firstControl);
+    return before ? { parent: actionGroup, before } : null;
   }
 
   private logNativePinnedState(section: HTMLElement): void {

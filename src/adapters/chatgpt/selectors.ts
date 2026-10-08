@@ -2,10 +2,15 @@
 export const CHATGPT_SELECTORS = {
   sidebarCandidates: [
     'nav[aria-label="Chat history"]',
+    'nav[aria-label="Sidebar"]',
     'nav[aria-label*="Chat"]',
     "aside nav",
     "nav",
   ],
+  sidebarScrollBody: "[data-app-action-sidebar-scroll]",
+  sidebarSection:
+    '[data-app-action-sidebar-section][data-app-action-sidebar-section-heading]',
+  sidebarSectionContainer: "[data-sidebar-project-container-id]",
   conversationLink:
     'a[href^="/c/"], a[href^="/g/"], a[href^="https://chatgpt.com/c/"], a[href^="https://chatgpt.com/g/"]',
   menu: '[role="menu"], [data-radix-menu-content], [data-headlessui-menu-items]',

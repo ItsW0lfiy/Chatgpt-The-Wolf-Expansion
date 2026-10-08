@@ -50,9 +50,31 @@ test("current sidebar preserves a semantic root, scroll body, and native section
   const sidebar = fixture("chatgpt-sidebar-current-2026-09-27.sanitized.html");
   assert.match(sidebar, /<nav[^>]*aria-label="Chat history"/u);
   assert.match(sidebar, /data-app-action-sidebar-scroll=/u);
+  assert.match(sidebar, /data-app-action-sidebar-section-heading="Pinned"/u);
+  assert.match(sidebar, /data-sidebar-project-container-id="pinned"/u);
   assert.match(sidebar, />Pinned</u);
   assert.match(sidebar, />Projects</u);
   assert.match(sidebar, />Recents</u);
+});
+
+test("sidebar adapter accepts both current and previous semantic navigation roots", () => {
+  assert.ok(CHATGPT_SELECTORS.sidebarCandidates.includes('nav[aria-label="Sidebar"]'));
+  assert.ok(CHATGPT_SELECTORS.sidebarCandidates.includes('nav[aria-label="Chat history"]'));
+  assert.equal(CHATGPT_SELECTORS.sidebarScrollBody, "[data-app-action-sidebar-scroll]");
+  assert.match(CHATGPT_SELECTORS.sidebarSection, /data-app-action-sidebar-section-heading/u);
+  assert.match(CHATGPT_SELECTORS.sidebarSectionContainer, /data-sidebar-project-container-id/u);
+});
+
+test("current row keeps native controls in a shared trailing rail", () => {
+  const row = fixture("chatgpt-sidebar-current-2026-09-27.sanitized.html");
+  const actionButton = row.indexOf('aria-label="Chat actions"');
+  const pinButton = row.indexOf('aria-label="Pin chat"');
+  assert.ok(actionButton >= 0);
+  assert.ok(pinButton > actionButton);
+  assert.match(
+    row.slice(Math.max(0, actionButton - 1200), pinButton + 200),
+    /flex items-center[^>]*justify-end/u,
+  );
 });
 
 test("current routed settings app is not mistaken for a conversation page", () => {
