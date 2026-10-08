@@ -437,10 +437,11 @@ export class DefaultChatGPTAdapter implements ChatGPTAdapter {
     const rowCandidates = this.findExactNativeConversationRows(conversationId).map((row) => ({
       conversationIds: [conversationId],
       triggers: Array.from(
-        row.querySelectorAll<HTMLElement>("button[data-conversation-options-trigger]"),
+        row.querySelectorAll<HTMLElement>(CHATGPT_SELECTORS.conversationMenuTrigger),
       ).filter((control) =>
-        !control.closest(`[${WOLF_ATTRIBUTE}]`) &&
-        control.getAttribute("data-conversation-options-trigger") === conversationId),
+        !control.closest(`[${WOLF_ATTRIBUTE}]`) && this.isConversationMenuTrigger(control) &&
+        (!control.hasAttribute("data-conversation-options-trigger") ||
+          control.getAttribute("data-conversation-options-trigger") === conversationId)),
       wolfOwned: isWolfElement(row),
     } satisfies NativeConversationActionCandidate<HTMLElement>));
 
@@ -541,7 +542,7 @@ export class DefaultChatGPTAdapter implements ChatGPTAdapter {
     }
     const expected = kind === "pin" ? /^Pin(?:\s|$)/iu : /^Unpin(?:\s|$)/iu;
     const buttons = Array.from(rows[0]!.querySelectorAll<HTMLElement>(
-      'button[data-trailing-button]',
+      CHATGPT_SELECTORS.nativeConversationPinButton,
     )).filter((button) =>
       !button.closest(`[${WOLF_ATTRIBUTE}]`) &&
       expected.test(button.getAttribute("aria-label")?.trim() ?? "") &&
@@ -1125,23 +1126,13 @@ export class DefaultChatGPTAdapter implements ChatGPTAdapter {
       return [];
     }
     const rows = new Set<HTMLElement>();
-    const triggers = Array.from(
-      sidebar.querySelectorAll<HTMLElement>("button[data-conversation-options-trigger]"),
-    ).filter((trigger) =>
-      !trigger.closest(`[${WOLF_ATTRIBUTE}]`) &&
-      trigger.getAttribute("data-conversation-options-trigger") === conversationId);
-    for (const trigger of triggers) {
-      let candidate = trigger.parentElement;
-      for (let depth = 0; candidate && candidate !== sidebar && depth < 8; depth += 1) {
-        const identities = this.findConversationIdentitiesWithin(candidate);
-        if (identities.size > 1) {
-          break;
-        }
-        if (identities.size === 1 && identities.has(conversationId)) {
-          rows.add(candidate);
-          break;
-        }
-        candidate = candidate.parentElement;
+    const links = this.findConversationLinks().filter(
+      (link) => this.getConversationIdFromUrl(link.href) === conversationId,
+    );
+    for (const link of links) {
+      const row = this.findExactConversationRow(link, conversationId);
+      if (row) {
+        rows.add(row);
       }
     }
     return [...rows];

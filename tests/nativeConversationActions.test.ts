@@ -85,7 +85,9 @@ test("only supported ChatGPT-owned conversation actions are proxied", () => {
   assert.equal(classifyNativeConversationMenuAction("Unpin"), "unpin");
   assert.equal(classifyNativeConversationMenuAction("Archive"), "archive");
   assert.equal(classifyNativeConversationMenuAction("Delete"), "delete");
-  assert.equal(classifyNativeConversationMenuAction("Share"), null);
+  assert.equal(classifyNativeConversationMenuAction("Move to project"), "move-to-project");
+  assert.equal(classifyNativeConversationMenuAction("Share"), "share");
+  assert.equal(classifyNativeConversationMenuAction("Move to Folder"), null);
 });
 
 test("sanitized native-menu evidence exposes semantic actions and a separate Wolf subtree", () => {

@@ -7,8 +7,10 @@ export type NativeConversationActionUnavailableReason =
 export type NativeConversationMenuActionKind =
   | "archive"
   | "delete"
+  | "move-to-project"
   | "pin"
   | "rename"
+  | "share"
   | "unpin";
 
 export interface NativeConversationMenuActionDescriptor {
@@ -91,6 +93,12 @@ export function classifyNativeConversationMenuAction(
   }
   if (/\bdelete\b/iu.test(normalized)) {
     return "delete";
+  }
+  if (/^move to project(?:\b|$)/iu.test(normalized)) {
+    return "move-to-project";
+  }
+  if (/^share(?:\b|$)/iu.test(normalized)) {
+    return "share";
   }
   return null;
 }

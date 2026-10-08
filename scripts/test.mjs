@@ -12,6 +12,7 @@ const tests = [
   "tests/backup.test.ts",
   "tests/conversationIdentity.test.ts",
   "tests/conversationUrl.test.ts",
+  "tests/currentUiCompatibility.test.ts",
   "tests/dragIndicatorState.test.ts",
   "tests/favorites.test.ts",
   "tests/fixturePrivacy.test.ts",
