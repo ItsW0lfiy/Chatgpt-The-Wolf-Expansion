@@ -6,11 +6,18 @@
 
 ChatGPT: The Wolf Expansion is a free, open-source Firefox and Floorp extension that adds missing power-user features to ChatGPT while preserving ChatGPT's normal interface.
 
-> **Development status:** `v0.2-dev.3` — Data Safety & Navigation Reliability. This is an early development build intended for manual testing. ChatGPT's DOM changes frequently, so integrations may need ongoing adapter updates.
+> **Development status:** `v0.2-dev.3.1` — ChatGPT UI Compatibility. This is an early development build intended for manual testing. ChatGPT's DOM changes frequently, so integrations may need ongoing adapter updates.
 
 This project is unofficial and is not affiliated with, endorsed by, or sponsored by OpenAI.
 
-## Implemented in v0.2-dev.3
+## Implemented in v0.2-dev.3.1
+
+- Current ChatGPT sidebar rows are resolved from validated conversation links and semantic row/action controls instead of depending on the removed `data-conversation-options-trigger` attribute. Older captured row shapes remain supported.
+- Current project conversation locations such as `/g/g-p-<project-id>/c/<conversation-id>` preserve both the real conversation ID and complete validated navigation URL. Legacy `/g/<conversation-id>` links remain supported.
+- Native conversation action menus are reacquired from the exact live row and support the current semantic Radix menu, including Rename, Pin/Unpin, Move to project, Share, Archive, and Delete.
+- The current `Open profile menu` control is recognized as signed-in UI evidence. Its mutable/data-image avatar is not accepted as account identity, so account-owned organization remains fail-closed when no safe stable rendered identifier is available.
+- Optional **Navigation compatibility fixes** are available in both settings surfaces. A small `document_start` content script repairs conversation focus, PageUp/PageDown behavior, and Firefox-style middle-click autoscroll without intercepting typing or middle-clicking links.
+- The sanitized current-UI fixture generation is retained beside the older fixtures and covered by the repository privacy checks.
 
 - **Create backup** downloads a versioned, checksummed JSON file containing global settings, legacy recovery metadata, and every opaque account-scoped organization namespace. The file contains saved conversation IDs/titles and folder names, so it should be kept somewhere private and user-controlled.
 - **Restore backup** validates the complete file and checksum before replacing Wolf Expansion storage, retains an extension-local pre-restore safety snapshot, preserves account boundaries, and reconciles open ChatGPT tabs without a browser restart. It is a replace operation, not a merge.
@@ -139,6 +146,8 @@ Open settings directly from the **Wolf Expansion** settings entry in ChatGPT's s
 14. With account A signed in, create Quick Access/folder data; reload ChatGPT, restart Firefox/Floorp, and (if practical) change the account avatar. Confirm the same organization returns without creating a new Wolf namespace.
 15. Log out, sign in as account B, then return to A. At every transition and reload, confirm no prior-account titles flash, B never sees A data, and A's original data returns only when A is resolved again.
 16. On an upgrade that has dev.2.1 organization under an old account scope, open Wolf settings. Confirm data stays hidden until **Restore previous Quick Access data** is explicitly confirmed, then returns immediately. Confirm a nonempty destination is not overwritten and another account cannot claim the same backup.
+17. Verify both a normal `/c/...` row and a current project `/g/g-p-.../c/...` row receive the exact-row Wolf star and menu actions. Open the project chat from Quick Access and confirm its full project URL is preserved.
+18. Opt into **Navigation compatibility fixes**. Check normal message clicks, Arrow/Home/End, PageUp/PageDown, middle-click autoscroll, middle-click-open-link, Escape/blur cleanup, live disable, and global Wolf disable without disrupting typing.
 
 Folder metadata lives in extension `storage.local`. Clearing ordinary ChatGPT site data or browser cache is not intended to remove it; explicitly clearing extension data or uninstalling the extension can.
 
@@ -154,6 +163,7 @@ The project uses strict TypeScript, native DOM APIs, CSS, Firefox WebExtension A
 - `src/features/favorites/` — the preserved internal Favorites/Quick Access repository and identity events.
 - `src/features/folders/` — the preserved folder repository and hierarchy rules.
 - `src/features/quickAccess/` — unified projection, sidebar, drag/drop, menu integration, and lifecycle.
+- `src/compatibility/` — optional early navigation/focus compatibility behavior.
 
 Current storage keys are:
 
@@ -191,7 +201,7 @@ Current storage keys are:
 - Conversation titles update only from exact-ID native rows ChatGPT currently exposes. A single changed title can supersede its cached duplicate; genuinely ambiguous conflicting observations are still ignored safely.
 - Native actions in the local Quick Access menu require the exact matching ChatGPT history row and native menu trigger to be mounted. Wolf Expansion does not scroll history, navigate, or guess when the row is unavailable; Wolf-owned organization actions remain usable.
 - Account resolution relies on the opaque stable user ID carried by ChatGPT's rendered Estuary profile image. If ChatGPT removes or changes that carrier, organization UI remains fail-closed until the adapter is updated.
-- The v0.2-dev.3 backup/restore UI, natural root reparenting, and `/g/` DOM integration require signed-in Firefox/Floorp live verification.
+- The v0.2-dev.3 backup/restore UI and natural root reparenting still require signed-in Firefox/Floorp verification. The v0.2-dev.3.1 current-row/menu integration, project `/g/g-p-.../c/...` navigation, and optional navigation fixes also require live verification.
 - This milestone assigns each conversation to at most one folder. Folder references do not hide or move ChatGPT's native Recent-chat row.
 
 ## License

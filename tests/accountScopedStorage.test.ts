@@ -94,7 +94,7 @@ test("account scope identifiers are deterministic opaque hashes", async () => {
   assert.doesNotMatch(first, /user|example/iu);
 });
 
-test("schema 9 conservatively preserves legacy unscoped organization without assigning it", async () => {
+test("current schema conservatively preserves legacy unscoped organization without assigning it", async () => {
   const base = new MemoryStorage();
   await base.setMany({
     [STORAGE_KEYS.schemaVersion]: 6,
@@ -134,7 +134,7 @@ test("schema 9 conservatively preserves legacy unscoped organization without ass
   );
 });
 
-test("schema 9 migrates route-less account-scoped /c/ records and rejects malformed locations", async () => {
+test("current schema migrates route-less account-scoped /c/ records and rejects malformed locations", async () => {
   const base = new MemoryStorage();
   const scope = "sha256-eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee";
   await base.setMany({
