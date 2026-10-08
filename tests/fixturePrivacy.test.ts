@@ -11,9 +11,9 @@ const readFixture = (file: string): string =>
   readFileSync(path.join(fixtureRoot, file), "utf8");
 
 test("complete ChatGPT fixture pack has the expected public-only shape", () => {
-  assert.equal(htmlFiles.length, 21);
-  assert.equal(noteFiles.length, 5);
-  assert.equal(files.length, 26);
+  assert.equal(htmlFiles.length, 28);
+  assert.equal(noteFiles.length, 6);
+  assert.equal(files.length, 34);
 });
 
 test("sanitized fixtures reject credential, bootstrap, private-path, and executable capture data", () => {
@@ -35,6 +35,12 @@ test("sanitized fixtures reject credential, bootstrap, private-path, and executa
   assert.doesNotMatch(html, /<script\b/iu);
   assert.doesNotMatch(html, /\son(?:click|load|error|submit|focus|keydown|pointerdown)\s*=/iu);
   assert.doesNotMatch(html, /(?:javascript:|data:text\/html)/iu);
+  assert.doesNotMatch(html, /backend-api\/estuary\/public_content\/enc\//iu);
+
+  const extensionOrigins = [...html.matchAll(/moz-extension:\/\/([^/"']+)/giu)];
+  assert.ok(extensionOrigins.every((match) =>
+    match[1] === "wolf-expansion-runtime" ||
+    match[1] === "00000000-0000-4000-8000-000000000001"));
 });
 
 test("fixture identities and image sources remain deterministic and non-live", () => {
