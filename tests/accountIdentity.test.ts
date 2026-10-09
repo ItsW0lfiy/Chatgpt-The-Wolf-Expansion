@@ -5,6 +5,7 @@ import test from "node:test";
 import {
   createOpaqueAccountScopeId,
   getChatGPTAccountEvidenceSignature,
+  getChatGPTUserIdFromRenderedThemeAttribute,
   getChatGPTUserIdFromProfileImage,
   resolveChatGPTAccountEvidence,
 } from "../src/accounts/accountIdentity";
@@ -19,6 +20,7 @@ const baseSignals = {
   loggedOutControlVisible: false,
   profileImageSource: "",
   profilePresent: true,
+  renderedThemeUserId: "",
 };
 
 function createProfileImageUrl(id: string): string {
@@ -108,6 +110,88 @@ test("standard base64 and base64url Estuary payloads resolve the same stable use
     getChatGPTUserIdFromProfileImage(createStandardBase64ProfileImageUrl(id), baseSignals.baseUrl),
     "user-EXAMPLEACCOUNT123",
   );
+});
+
+test("current rendered theme user ID restores the same opaque account scope without an Estuary avatar", async () => {
+  const userId = "user-EXAMPLEACCOUNT123";
+  const renderedEvidence = resolveChatGPTAccountEvidence({
+    ...baseSignals,
+    profileImageSource: "data:image/png;base64,SANITIZED",
+    renderedThemeUserId: userId,
+  });
+  const estuaryEvidence = resolveChatGPTAccountEvidence({
+    ...baseSignals,
+    profileImageSource: createProfileImageUrl(`${userId}:image#file_one#thumbnail`),
+  });
+
+  assert.deepEqual(renderedEvidence, {
+    state: "identified",
+    source: "rendered-theme-user-id",
+    identity: `chatgpt-user-id:${userId}`,
+  });
+  assert.equal(renderedEvidence.state, "identified");
+  assert.equal(estuaryEvidence.state, "identified");
+  if (renderedEvidence.state === "identified" && estuaryEvidence.state === "identified") {
+    assert.equal(
+      await createOpaqueAccountScopeId(renderedEvidence.identity),
+      await createOpaqueAccountScopeId(estuaryEvidence.identity),
+    );
+  }
+});
+
+test("rendered theme identity is strict, fail-closed, and subordinate to Estuary evidence", () => {
+  assert.equal(
+    getChatGPTUserIdFromRenderedThemeAttribute("user-EXAMPLEACCOUNT123"),
+    "user-EXAMPLEACCOUNT123",
+  );
+  for (const invalid of [
+    "",
+    " user-EXAMPLEACCOUNT123",
+    "user-EXAMPLEACCOUNT123 ",
+    "profile-EXAMPLEACCOUNT123",
+    "user-short",
+    "user-EXAMPLEACCOUNT123:image",
+  ]) {
+    assert.equal(getChatGPTUserIdFromRenderedThemeAttribute(invalid), null);
+  }
+
+  assert.deepEqual(resolveChatGPTAccountEvidence({
+    ...baseSignals,
+    loggedOutControlVisible: true,
+    renderedThemeUserId: "user-EXAMPLEACCOUNT123",
+  }), { state: "logged-out" });
+
+  assert.deepEqual(resolveChatGPTAccountEvidence({
+    ...baseSignals,
+    profileImageSource: createProfileImageUrl(
+      "user-ESTUARYACCOUNT123:image#file_one#thumbnail",
+    ),
+    renderedThemeUserId: "user-THEMEACCOUNT123",
+  }), {
+    state: "identified",
+    source: "profile-user-id",
+    identity: "chatgpt-user-id:user-ESTUARYACCOUNT123",
+  });
+});
+
+test("rendered theme user ID changes produce distinct evidence signatures and scopes", async () => {
+  const accountA = resolveChatGPTAccountEvidence({
+    ...baseSignals,
+    renderedThemeUserId: "user-ACCOUNTAAAA",
+  });
+  const accountB = resolveChatGPTAccountEvidence({
+    ...baseSignals,
+    renderedThemeUserId: "user-ACCOUNTBBBB",
+  });
+  assert.notEqual(getChatGPTAccountEvidenceSignature(accountA), getChatGPTAccountEvidenceSignature(accountB));
+  assert.equal(accountA.state, "identified");
+  assert.equal(accountB.state, "identified");
+  if (accountA.state === "identified" && accountB.state === "identified") {
+    assert.notEqual(
+      await createOpaqueAccountScopeId(accountA.identity),
+      await createOpaqueAccountScopeId(accountB.identity),
+    );
+  }
 });
 
 test("mutable profile metadata cannot change account identity or scope", async () => {

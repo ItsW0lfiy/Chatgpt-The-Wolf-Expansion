@@ -655,6 +655,7 @@ export class DefaultChatGPTAdapter implements ChatGPTAdapter {
       ).some((element) => element.getAttribute("aria-hidden") !== "true" && !element.hidden),
       profileImageSource: profile?.querySelector<HTMLImageElement>("img[src]")?.src.trim() ?? "",
       profilePresent: profile !== null,
+      renderedThemeUserId: document.documentElement.getAttribute("data-theme-user-id") ?? "",
     });
   }
 
@@ -681,18 +682,22 @@ export class DefaultChatGPTAdapter implements ChatGPTAdapter {
       (node.matches(accountSelector) || node.querySelector(accountSelector) !== null);
     const observer = new MutationObserver((mutations) => {
       if (mutations.some((mutation) =>
+        (mutation.type === "attributes" &&
+          mutation.target === document.documentElement &&
+          mutation.attributeName === "data-theme-user-id") ||
         containsAccountEvidence(mutation.target) ||
         Array.from(mutation.addedNodes).some(containsAccountEvidence) ||
         Array.from(mutation.removedNodes).some(containsAccountEvidence))) {
         emit();
       }
     });
-    observer.observe(document.body, {
+    observer.observe(document.documentElement, {
       attributeFilter: [
         "aria-hidden",
         "aria-label",
         "data-mobile-auth-entry-action",
         "data-testid",
+        "data-theme-user-id",
         "hidden",
         "src",
       ],

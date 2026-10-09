@@ -95,4 +95,16 @@ test("current profile control establishes presence but not a stable account scop
     profileImageSource: "data:image/png;base64,SANITIZED",
     profilePresent: true,
   }), { state: "unresolved", reason: "invalid-profile-user-id" });
+
+  assert.deepEqual(resolveChatGPTAccountEvidence({
+    baseUrl: "https://chatgpt.com/",
+    loggedOutControlVisible: false,
+    profileImageSource: "data:image/png;base64,SANITIZED",
+    profilePresent: true,
+    renderedThemeUserId: "user-EXAMPLEACCOUNT123",
+  }), {
+    state: "identified",
+    source: "rendered-theme-user-id",
+    identity: "chatgpt-user-id:user-EXAMPLEACCOUNT123",
+  });
 });

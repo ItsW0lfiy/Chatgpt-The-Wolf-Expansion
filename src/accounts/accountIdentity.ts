@@ -6,7 +6,7 @@ export type ChatGPTAccountEvidence =
     }
   | {
       identity: string;
-      source: "profile-user-id";
+      source: "profile-user-id" | "rendered-theme-user-id";
       state: "identified";
     };
 
@@ -15,6 +15,7 @@ export interface ChatGPTAccountSignals {
   loggedOutControlVisible: boolean;
   profileImageSource: string;
   profilePresent: boolean;
+  renderedThemeUserId?: string;
 }
 
 const ESTUARY_PROFILE_CARRIER_PATH = "/backend-api/estuary/public_content/enc/";
@@ -62,6 +63,10 @@ export function getChatGPTUserIdFromProfileImage(
   }
 }
 
+export function getChatGPTUserIdFromRenderedThemeAttribute(value: string): string | null {
+  return CHATGPT_USER_ID_PATTERN.test(value) ? value : null;
+}
+
 export function resolveChatGPTAccountEvidence(
   signals: ChatGPTAccountSignals,
 ): ChatGPTAccountEvidence {
@@ -72,14 +77,18 @@ export function resolveChatGPTAccountEvidence(
     return { state: "unresolved", reason: "missing-profile" };
   }
 
-  const userId = getChatGPTUserIdFromProfileImage(
+  const profileUserId = getChatGPTUserIdFromProfileImage(
     signals.profileImageSource,
     signals.baseUrl,
   );
+  const renderedThemeUserId = getChatGPTUserIdFromRenderedThemeAttribute(
+    signals.renderedThemeUserId ?? "",
+  );
+  const userId = profileUserId ?? renderedThemeUserId;
   return userId
     ? {
         identity: `chatgpt-user-id:${userId}`,
-        source: "profile-user-id",
+        source: profileUserId ? "profile-user-id" : "rendered-theme-user-id",
         state: "identified",
       }
     : { state: "unresolved", reason: "invalid-profile-user-id" };
